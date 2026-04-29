@@ -47,8 +47,8 @@ from cython cimport floating
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def exp_filter(floating [:] in_data,
-               floating [:] in_jd,
+def exp_filter(const floating [:] in_data,
+               const floating [:] in_jd,
                int ctime=10,
                double nan=-999999.0):
     """
@@ -113,8 +113,8 @@ def exp_filter(floating [:] in_data,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def boxcar_filter(floating [:] in_data,
-                  floating [:] in_jd,
+def boxcar_filter(const floating [:] in_data,
+                  const floating [:] in_jd,
                   float window=1, double nan=-999999.0,
                   bint fillna=0, int min_obs=1):
     """

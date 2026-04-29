@@ -9,7 +9,7 @@ from libc.math cimport sqrt, fabs
 from scipy.special.cython_special import betainc
 
 
-cpdef _moments_welford_nd(floating [:,:] X):
+cpdef _moments_welford_nd(const floating [:,:] X):
     """
     Calculates means, variances, and covariance of the given input array using
     Welford's algorithm.

@@ -1793,7 +1793,7 @@ class TripleCollocationMetrics(MetadataMetrics, PairwiseMetricsMixin):
                         result[(metric, name)][0] = res[j][i]
                 result["status"][0] = eh.OK
             except ValueError:
-                result["status"] = eh.METRICS_CALCULATION_FAILED
+                result["status"][0] = eh.METRICS_CALCULATION_FAILED
         else:
             try:
                 # handle failing bootstrapping because e.g.
@@ -1809,5 +1809,5 @@ class TripleCollocationMetrics(MetadataMetrics, PairwiseMetricsMixin):
                 result["status"][0] = eh.OK
             except ValueError:
                 # if the calculation fails, the template results (np.nan) are used
-                result["status"] = eh.METRICS_CALCULATION_FAILED
+                result["status"][0] = eh.METRICS_CALCULATION_FAILED
         return result

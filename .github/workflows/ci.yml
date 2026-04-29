@@ -19,7 +19,7 @@ jobs:
       matrix:
         # as we build C extension for users to download, we want to include as many python versions
         # and OS versions as possible
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     name: py${{ matrix.python-version }}@${{ matrix.os }}
     runs-on: ${{ matrix.os }}
