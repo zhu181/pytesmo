@@ -263,13 +263,12 @@ def test_data():
     missing_mask = random_mask | drop_mask
 
     # with duplicates
-    test_dr["duplicates"] = deepcopy(test_dr["shifted_3"])
+    dup_values = test_dr["shifted_3"].values.copy()
     duplicates_mask = np.zeros(len(ref_dr), dtype=bool)
-    for idx in np.random.randint(0, len(test_dr["duplicates"]) - 1, 5):
-        test_dr["duplicates"].values[idx] = test_dr["duplicates"].values[
-            idx + 1
-        ]
+    for idx in np.random.randint(0, len(dup_values) - 1, 5):
+        dup_values[idx] = dup_values[idx + 1]
         duplicates_mask[idx] = True
+    test_dr["duplicates"] = pd.DatetimeIndex(dup_values, tz="UTC")
 
     # setting up dataframes
     test_frames = {
@@ -665,12 +664,14 @@ def test_combined_timezones():
             add_ref_data=True,
         )
         assert str(merged.index.tz) == "UTC"
-    assert len(warn_record) == 3
-    assert "No timezone given" in warn_record[0].message.args[0]
-    assert "Europe/Berlin" in warn_record[0].message.args[0]
-    assert "No timezone given" in warn_record[1].message.args[0]
-    assert "UTC" in warn_record[1].message.args[0]
-    assert "mixed timezones" in warn_record[2].message.args[0]
+    relevant = [w for w in warn_record if "No timezone given" in str(w.message)
+            or "mixed timezones" in str(w.message)]
+    assert len(relevant) == 3
+    assert "No timezone given" in relevant[0].message.args[0]
+    assert "Europe/Berlin" in relevant[0].message.args[0]
+    assert "No timezone given" in relevant[1].message.args[0]
+    assert "UTC" in relevant[1].message.args[0]
+    assert "mixed timezones" in relevant[2].message.args[0]
 
     # test with different timezones and ref timezone
     merged = tmatching.combined_temporal_collocation(
@@ -740,7 +741,7 @@ def test_mean_collocation_missing_start_end():
     # expected.
 
     dr = pd.date_range("2019", "2020", freq="D", tz="UTC")
-    other_dr = pd.date_range("2019", "2020", freq="D", tz="UTC").values
+    other_dr = pd.date_range("2019", "2020", freq="D", tz="UTC").values.copy()
     other_dr[0:10] += pd.Timedelta(12, "h")
     other_dr[-10:] -= pd.Timedelta(12, "h")
     other = pd.DataFrame(

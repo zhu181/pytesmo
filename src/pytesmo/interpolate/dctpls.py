@@ -452,6 +452,8 @@ def smoothn(
     stats: dict
         Side products that were selected in `return_stats`
     """
+    # Make a copy of the data to avoid changing the original data
+    data = np.array(data, copy=True)
 
     def _enter_debug_mode():
         logger.setLevel('DEBUG')

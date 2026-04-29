@@ -17,6 +17,7 @@ dependencies:
   - pykdtree
   - pyresample
   - matplotlib>=1.2.0
+  - pytz
   - pip
   # optional, for documentation and testing:
   # - nb_conda

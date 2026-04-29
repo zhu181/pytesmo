@@ -9,7 +9,7 @@ from libc.math cimport sqrt, fabs
 from scipy.special.cython_special import betainc
 
 
-cpdef _moments_welford(floating [:] x, floating [:] y):
+cpdef _moments_welford(const floating [:] x, const floating [:] y):
     """
     Calculates means, variances, and covariance of the given input array using
     Welford's algorithm.
@@ -46,7 +46,7 @@ cpdef _moments_welford(floating [:] x, floating [:] y):
 
 
 
-cpdef bias(floating [:] x, floating [:] y):
+cpdef bias(const floating [:] x, const floating [:] y):
     """
     Difference of the mean values.
 
@@ -71,7 +71,7 @@ cpdef bias(floating [:] x, floating [:] y):
     return b / n
 
 
-cpdef RSS(floating [:] x, floating [:] y):
+cpdef RSS(const floating [:] x, const floating [:] y):
     """
     Residual sum of squares.
 
@@ -95,7 +95,7 @@ cpdef RSS(floating [:] x, floating [:] y):
     return sum
 
 
-cpdef mse_corr(floating [:] x, floating [:] y):
+cpdef mse_corr(const floating [:] x, const floating [:] y):
     r"""
     Correlation component of MSE.
 
@@ -137,7 +137,7 @@ cpdef _mse_corr_from_moments(
 
 
 
-cpdef mse_var(floating [:] x, floating [:] y):
+cpdef mse_var(const floating [:] x, const floating [:] y):
     r"""
     Variance component of MSE.
 
@@ -178,7 +178,7 @@ cpdef _mse_var_from_moments(
     return (sqrt(vx) - sqrt(vy)) ** 2
 
 
-cpdef mse_bias(floating [:] x, floating [:] y):
+cpdef mse_bias(const floating [:] x, const floating [:] y):
     r"""
     Bias component of MSE.
 
@@ -222,7 +222,7 @@ cpdef _mse_bias_from_moments(
 # mse_decomposition:
 # 48.3 µs ± 8.69 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
 # -> 32 times faster!
-cpdef mse_decomposition(floating [:] x, floating [:] y):
+cpdef mse_decomposition(const floating [:] x, const floating [:] y):
     r"""
     Mean square deviation/mean square error.
 
@@ -274,7 +274,7 @@ cpdef mse_decomposition(floating [:] x, floating [:] y):
     return mse, mse_corr, mse_bias, mse_var
 
 
-cpdef _ubrmsd(floating [:] x, floating [:] y):
+cpdef _ubrmsd(const floating [:] x, const floating [:] y):
     r"""
     Unbiased root-mean-square deviation (uRMSD).
 
@@ -344,9 +344,9 @@ cpdef _pearsonr_from_moments(floating varx, floating vary, floating cov, int n):
 # This implementation is much faster than the old version with numba:
 # old: 76.7 ms ± 1.62 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
 # new: 117 µs ± 836 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
-cpdef rolling_pr_rmsd(double [:] timestamps,
-                      floating [:] x,
-                      floating [:] y,
+cpdef rolling_pr_rmsd(const double [:] timestamps,
+                      const floating [:] x,
+                      const floating [:] y,
                       double window_size,
                       int center,
                       int min_periods):
