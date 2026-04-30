@@ -5,7 +5,7 @@ Changelog
 Unreleased changes in master
 ============================
 
-Version 0.18.1, 2026-04-29
+Version 0.18.1, 2026-04-30
 ============================
 - Fix bug in ``_unique_percentile_interpolation()`` in ``cdf_matching``, by forcing percentiles to be np.array
 - Fix problem of pandas v3 providing read-only views (e.g. series.values)
