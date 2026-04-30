@@ -21,6 +21,8 @@ jobs:
         # and OS versions as possible
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+    env:
+      dist_vers: '3.13'   # python version to create sdist from, use the latest availabe
     name: py${{ matrix.python-version }}@${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
@@ -62,6 +64,7 @@ jobs:
         run: |
           pytest
       - name: Upload Coverage
+        continue-on-error: true
         shell: bash -l {0}
         run: |
           pip install coveralls && coveralls --service=github-actions
@@ -83,8 +86,10 @@ jobs:
             OS="win"
           fi
 
-          pip install setuptools_scm twine cibuildwheel
-          python setup.py sdist --dist-dir artifacts/dist_whl
+          pip install setuptools_scm twine cibuildwheel build
+          if [[ "${{ runner.os }}" == "Linux" && "${{ matrix.python-version }}" == "${{ env.dist_vers }}" ]]; then
+            python -m build --sdist --outdir artifacts/dist_whl
+          fi
           export CIBW_BUILD="cp${PY}-${OS}*"
           cibuildwheel --output-dir artifacts/dist_whl
           twine check artifacts/dist_whl/*
@@ -132,6 +137,7 @@ jobs:
           path: Artifacts
           pattern: Artifacts*
           merge-multiple: true
+  
       - name: Display downloaded files
         run: ls -aR
       - name: Upload to PyPI
