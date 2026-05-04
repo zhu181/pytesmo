@@ -1661,8 +1661,8 @@ class PairwiseIntercomparisonMetrics(MetadataMetrics, PairwiseMetricsMixin):
             return result
 
         data_matrix = data.values
-        x = data_matrix[:, 0]
-        y = data_matrix[:, 1]
+        x = data_matrix[:, 0].copy()
+        y = data_matrix[:, 1].copy()
 
         # we can calculate almost all metrics from moments
         mx, my, varx, vary, cov = _moments_welford(x, y)
@@ -1772,7 +1772,8 @@ class TripleCollocationMetrics(MetadataMetrics, PairwiseMetricsMixin):
 
         # get the remaining metrics template for this specific combination
         othernames = list(data.columns)
-        othernames.remove(self.refname)
+        if self.refname in othernames:
+            othernames.remove(self.refname)
         result.update(self._get_metric_template(self.refname, othernames))
 
         if n_obs < self.min_obs:
