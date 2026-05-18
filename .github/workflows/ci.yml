@@ -27,11 +27,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
           fetch-depth: 0
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
            miniconda-version: "latest"
            auto-update-conda: true
@@ -94,7 +94,7 @@ jobs:
           cibuildwheel --output-dir artifacts/dist_whl
           twine check artifacts/dist_whl/*
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: Artifacts-${{ matrix.python-version }}-${{ matrix.os }}
           path: artifacts/*
@@ -107,7 +107,7 @@ jobs:
     steps:
       # Merge artifacts from multiple builds
       - name: Merge Uploaded Artifacts
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@v5
         with:
           name: Artifacts
           delete-merged: true
@@ -132,7 +132,7 @@ jobs:
           echo "GITHUB_REF = $GITHUB_REF"
           echo "GITHUB_REPOSITORY = $GITHUB_REPOSITORY"
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: Artifacts
           pattern: Artifacts*
