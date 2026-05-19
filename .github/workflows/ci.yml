@@ -17,8 +17,8 @@ jobs:
   build:
     strategy:
       matrix:
-        # as we build C extension for users to download, we want to include as many python versions
-        # and OS versions as possible
+        # test matrix - tests run against the editable install, independent
+        # of wheel building (which now lives in the build_wheels job)
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     env:
@@ -27,11 +27,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
           fetch-depth: 0
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
            miniconda-version: "latest"
            auto-update-conda: true
@@ -39,7 +39,7 @@ jobs:
            environment-file: environment.yml
            activate-environment: pytesmo
            channel-priority: flexible
-           auto-activate-base: false
+           auto-activate: false
       - name: Print Infos
         run: |
           git status
@@ -72,42 +72,59 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: ${{ matrix.python-version }}
           COVERALLS_PARALLEL: true
-      - name: Build dist and whl packages
+      - name: Build sdist
+        # sdist only needs to be built once, on Linux with the chosen python
+        if: runner.os == 'Linux' && matrix.python-version == env.dist_vers
         shell: bash -l {0}
         run: |
-          # Remove dots from Python version for use with cibuildwheel
-          PY="${{ matrix.python-version }}"; PY="${PY//./}"
-          # Get current OS on cibuildwheel compatible form
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            OS="manylinux"
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            OS="macosx"
-          elif [ "${{ runner.os }}" == "Windows" ]; then
-            OS="win"
-          fi
-
-          pip install setuptools_scm twine cibuildwheel build
-          if [[ "${{ runner.os }}" == "Linux" && "${{ matrix.python-version }}" == "${{ env.dist_vers }}" ]]; then
-            python -m build --sdist --outdir artifacts/dist_whl
-          fi
-          export CIBW_BUILD="cp${PY}-${OS}*"
-          cibuildwheel --output-dir artifacts/dist_whl
-          twine check artifacts/dist_whl/*
+          pip install build
+          python -m build --sdist --outdir artifacts/dist_whl
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Artifacts-${{ matrix.python-version }}-${{ matrix.os }}
           path: artifacts/*
 
+  build_wheels:
+    # Build wheels once per OS. cibuildwheel runs under a fixed modern host
+    # python (3.12) and builds every target CPython itself.
+    name: Build wheels @${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build wheels
+        run: |
+          pipx run cibuildwheel --output-dir artifacts/dist_whl
+        env:
+          # build the same CPython versions as the test matrix
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+      - name: Check wheels
+        run: |
+          pipx run twine check artifacts/dist_whl/*
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: Artifacts-wheels-${{ matrix.os }}
+          path: artifacts/*
+
   wrapup:
     name: Wrap-Up Builds
-    needs: build
+    needs: [build, build_wheels]
     runs-on: ubuntu-latest
     container: python:3-slim
     steps:
       # Merge artifacts from multiple builds
       - name: Merge Uploaded Artifacts
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@v6
         with:
           name: Artifacts
           delete-merged: true
@@ -132,7 +149,7 @@ jobs:
           echo "GITHUB_REF = $GITHUB_REF"
           echo "GITHUB_REPOSITORY = $GITHUB_REPOSITORY"
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: Artifacts
           pattern: Artifacts*
