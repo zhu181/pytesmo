@@ -27,9 +27,14 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import itertools
-import numpy as np
+import logging
 
+import numpy as np  # type: ignore[import-untyped]
+
+from pytesmo.validation_framework.read_lock import HDF5_READ_LOCK
 from pytesmo.validation_framework.upscaling import Upscaling, MixinReadTs
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DataManager(MixinReadTs):
