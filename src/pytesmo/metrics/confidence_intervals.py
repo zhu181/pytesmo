@@ -4,6 +4,24 @@ from scipy import stats
 from pytesmo.metrics import pairwise
 from pytesmo.metrics.tcol import tcol_metrics
 
+# Try to import GPU-accelerated bootstrapping
+try:
+    from pytesmo.gpu import is_gpu_available
+    from pytesmo.gpu.bootstrap import (
+        with_bootstrapped_ci as _gpu_with_bootstrapped_ci,
+        tcol_metrics_with_bootstrapped_ci as _gpu_tcol_metrics_with_bootstrapped_ci,
+    )
+    _GPU_AVAILABLE = is_gpu_available()
+except ImportError:
+    _GPU_AVAILABLE = False
+
+
+def _to_numpy(arr):
+    """Convert array to numpy, handling CuPy arrays."""
+    if hasattr(arr, 'get'):
+        arr = arr.get()
+    return np.asarray(arr)
+
 
 def has_analytical_ci(metric_func):
     """
@@ -89,6 +107,8 @@ def with_bootstrapped_ci(
     This works only for pairwise metrics, use
     :py:func:`pytesmo.metrics.tcol_metrics_with_bootstrap_ci` for TCA metrics.
 
+    GPU acceleration is automatically used when available via `pytesmo[gpu]` extra.
+
     Parameters
     ----------
     metric_func : callable
@@ -131,6 +151,15 @@ def with_bootstrapped_ci(
     Verification* (No. NCAR/TN-479+STR). University Corporation for Atmospheric\
     Research. doi:10.5065/D6WD3XJM
     """
+    # Use GPU implementation if available
+    if _GPU_AVAILABLE:
+        result = _gpu_with_bootstrapped_ci(
+            metric_func, x, y, alpha=alpha, method=method,
+            nsamples=nsamples, minimum_data_length=minimum_data_length
+        )
+        return tuple(_to_numpy(r) for r in result)
+    
+    # CPU fallback (original implementation)
     # Prototype, might be better to implement this in Cython if it's too slow.
     # Then it would probably be best to make this function only a lookup table
     # which calls a cpdef'd method, which itself calls the cdef'd metric
@@ -181,6 +210,8 @@ def tcol_metrics_with_bootstrapped_ci(
     value using Triple Collocation Analysis and uses bootstrapping to find
     confidence intervals.
 
+    GPU acceleration is automatically used when available via `pytesmo[gpu]` extra.
+
     Parameters
     ----------
     x, y, z : np.ndarray
@@ -224,6 +255,17 @@ def tcol_metrics_with_bootstrapped_ci(
     Verification* (No. NCAR/TN-479+STR). University Corporation for Atmospheric\
     Research. doi:10.5065/D6WD3XJM
     """
+    # Use GPU implementation if available
+    if _GPU_AVAILABLE:
+        result = _gpu_tcol_metrics_with_bootstrapped_ci(
+            x, y, z, ref_ind=ref_ind, alpha=alpha, method=method,
+            nsamples=nsamples, minimum_data_length=minimum_data_length
+        )
+        return tuple(
+            tuple(_to_numpy(v) for v in triplet) for triplet in result
+        )
+    
+    # CPU fallback (original implementation)
     # Prototype, might be better to implement this in Cython if it's too slow.
     # Then it would probably be best to make this function only a lookup table
     # which calls a cpdef'd method, which itself calls the cdef'd metric

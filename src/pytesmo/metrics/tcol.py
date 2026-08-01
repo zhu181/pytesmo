@@ -6,11 +6,28 @@ inside :py:func:`tcol_metrics`. Bootstrapped CIs can be obtained with
 :py:func:`tcol_metrics_with_bootstrapped_ci`.
 
 Bootstrapping is currently not available for extended TCA.
+
+GPU acceleration is automatically used when available via `pytesmo[gpu]` extra.
 """
 
 
 from itertools import permutations, combinations
 import numpy as np
+
+# Try to import GPU-accelerated version
+try:
+    from pytesmo.gpu import is_gpu_available
+    from pytesmo.gpu.tcol import tcol_metrics as _gpu_tcol_metrics
+    _GPU_AVAILABLE = is_gpu_available()
+except ImportError:
+    _GPU_AVAILABLE = False
+
+
+def _to_numpy(arr):
+    """Convert array to numpy, handling CuPy arrays."""
+    if hasattr(arr, 'get'):
+        arr = arr.get()
+    return np.asarray(arr).squeeze()
 
 
 @np.errstate(invalid="ignore")
@@ -78,15 +95,15 @@ def tcol_metrics(x, y, z, ref_ind=0):
     .. math::
 
        \\text{SNR}_X[dB] = -10\\log\\left(\\frac{\\sigma_{X}^2\\sigma_{YZ}}
-                                         {\\sigma_{XY}\\sigma_{XZ}}-1\\right)
+                                          {\\sigma_{XY}\\sigma_{XZ}}-1\\right)
     .. math::
 
        \\text{SNR}_Y[dB] = -10\\log\\left(\\frac{\\sigma_{Y}^2\\sigma_{XZ}}
-                                         {\\sigma_{YX}\\sigma_{YZ}}-1\\right)
+                                          {\\sigma_{YX}\\sigma_{YZ}}-1\\right)
     .. math::
 
        \\text{SNR}_Z[dB] = -10\\log\\left(\\frac{\\sigma_{Z}^2\\sigma_{XY}}
-                                         {\\sigma_{ZX}\\sigma_{ZY}}-1\\right)
+                                          {\\sigma_{ZX}\\sigma_{ZY}}-1\\right)
 
     It is given in dB to make it symmetric around zero. If the value is zero
     it means that the signal variance and the noise variance are equal. +3dB
@@ -94,12 +111,20 @@ def tcol_metrics(x, y, z, ref_ind=0):
 
     References
     ----------
-    .. [Gruber2015] Gruber, A., Su, C., Zwieback, S., Crow, W., Dorigo, W.,\
-    Wagner, W.  (2015). Recent advances in (soil moisture) triple\
-    collocation analysis.  International Journal of Applied Earth\
+    .. [Gruber2015] Gruber, A., Su, C., Zwieback, S., Crow, W., Dorigo, W.,\\
+    Wagner, W.  (2015). Recent advances in (soil moisture) triple\\
+    collocation analysis.  International Journal of Applied Earth\\
     Observation and Geoinformation, in review
     """
 
+    if _GPU_AVAILABLE:
+        snr, err_std, beta = _gpu_tcol_metrics(x, y, z, ref_ind)
+        # Convert back to numpy (public API returns numpy arrays)
+        snr = _to_numpy(snr)
+        err_std = _to_numpy(err_std)
+        beta = _to_numpy(beta)
+        return snr, err_std, beta
+    
     cov = np.cov(np.vstack((x, y, z)))
     return _tcol_metrics_from_cov(cov, ref_ind)
 

@@ -24,5 +24,8 @@ __all__ = [
     "time_series",
     "grid",
     "colormaps",
-    "validation_framework"
+    "validation_framework",
+    "gpu",
+    "parallel",
+    "io",
 ]

@@ -1,3 +1,18 @@
+"""
+Deprecated: Use pytesmo.parallel instead.
+
+This module is kept for backward compatibility but will be removed in a future version.
+"""
+
+import warnings
+
+warnings.warn(
+    "pytesmo.validation_framework.start_validation is deprecated and will be removed. "
+    "Use pytesmo.parallel.DaskParallelExecutor or pytesmo.parallel.parallel_map instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 try:
     from IPython import parallel
 except ImportError:
@@ -22,12 +37,19 @@ def func(job):
 def start_validation(setup_code):
     """
     Perform the validation with IPython parallel processing.
+    
+    DEPRECATED: Use pytesmo.parallel instead.
 
     Parameters
     ----------
     setup_code : string
         Path to .py file containing the setup for the validation.
     """
+    warnings.warn(
+        "start_validation is deprecated. Use pytesmo.parallel.DaskParallelExecutor.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     c = parallel.Client()
     dv = c[:]
     lview = c.load_balanced_view()

@@ -26,6 +26,8 @@
 
 """
 Metric calculators implement combinations of metrics and structure the output.
+
+GPU acceleration is automatically used when available via `pytesmo[gpu]` extra.
 """
 
 import copy
@@ -63,6 +65,28 @@ from pytesmo.metrics.pairwise import (
     spearman_r_ci,
     kendall_tau_ci,
 )
+
+# Try to import GPU-accelerated functions
+try:
+    from pytesmo.gpu import is_gpu_available
+    from pytesmo.gpu.pairwise import (
+        bias as _gpu_bias,
+        mse_decomposition as _gpu_mse_decomposition,
+        rmsd as _gpu_rmsd,
+        ubrmsd as _gpu_ubrmsd,
+        pearson_r as _gpu_pearson_r,
+        spearman_r as _gpu_spearman_r,
+        kendall_tau as _gpu_kendall_tau,
+        rolling_pr_rmsd as _gpu_rolling_pr_rmsd,
+    )
+    from pytesmo.gpu.tcol import tcol_metrics as _gpu_tcol_metrics
+    from pytesmo.gpu.bootstrap import (
+        with_bootstrapped_ci as _gpu_with_bootstrapped_ci,
+        tcol_metrics_with_bootstrapped_ci as _gpu_tcol_metrics_with_bootstrapped_ci,
+    )
+    _GPU_AVAILABLE = is_gpu_available()
+except ImportError:
+    _GPU_AVAILABLE = False
 
 
 def _get_tc_metric_template(metr, ds_names):
@@ -1537,12 +1561,24 @@ class PairwiseMetricsMixin:
 
         if self.bootstrap_cis:
             for m in ["mse_var", "mse_corr", "mse_bias", "mse", "RMSD"]:
-                if m == "mse":
-                    metric_func = pairwise.msd
-                elif m == "RMSD":
-                    metric_func = pairwise.rmsd
+                if _GPU_AVAILABLE:
+                    if m == "mse":
+                        metric_func = lambda x, y: _gpu_mse_decomposition(x, y)[0]
+                    elif m == "RMSD":
+                        metric_func = _gpu_rmsd
+                    elif m == "mse_var":
+                        metric_func = lambda x, y: _gpu_mse_decomposition(x, y)[3]
+                    elif m == "mse_corr":
+                        metric_func = lambda x, y: _gpu_mse_decomposition(x, y)[1]
+                    elif m == "mse_bias":
+                        metric_func = lambda x, y: _gpu_mse_decomposition(x, y)[2]
                 else:
-                    metric_func = getattr(pairwise, m)
+                    if m == "mse":
+                        metric_func = pairwise.msd
+                    elif m == "RMSD":
+                        metric_func = pairwise.rmsd
+                    else:
+                        metric_func = getattr(pairwise, m)
                 kwargs = {}
                 if hasattr(self, 'bootstrap_alpha'):
                     kwargs['alpha'] = getattr(self, 'bootstrap_alpha')
@@ -1664,9 +1700,16 @@ class PairwiseIntercomparisonMetrics(MetadataMetrics, PairwiseMetricsMixin):
         x = data_matrix[:, 0].copy()
         y = data_matrix[:, 1].copy()
 
-        # we can calculate almost all metrics from moments
-        mx, my, varx, vary, cov = _moments_welford(x, y)
-        self._calc_pairwise_metrics(x, y, mx, my, varx, vary, cov, result)
+        # Use GPU-accelerated functions if available
+        if _GPU_AVAILABLE:
+            # Calculate all metrics from GPU moments
+            mx, my, varx, vary, cov = _moments_welford(x, y)
+            self._calc_pairwise_metrics(x, y, mx, my, varx, vary, cov, result)
+        else:
+            # CPU fallback - use Welford from _fast_pairwise
+            mx, my, varx, vary, cov = _moments_welford(x, y)
+            self._calc_pairwise_metrics(x, y, mx, my, varx, vary, cov, result)
+        
         result["status"][0] = eh.OK
         return result
 
@@ -1788,7 +1831,14 @@ class TripleCollocationMetrics(MetadataMetrics, PairwiseMetricsMixin):
         arrays = (data[name].values for name in ds_names)
         if not self.bootstrap_cis:
             try:
-                res = tcol_metrics(*arrays)
+                # Use GPU if available
+                if _GPU_AVAILABLE:
+                    from pytesmo.gpu.tcol import tcol_metrics as gpu_tcol_metrics
+                    res = gpu_tcol_metrics(*arrays)
+                    # Squeeze batch dimension if present
+                    res = tuple(r.squeeze(0) if r.ndim > 1 else r for r in res)
+                else:
+                    res = tcol_metrics(*arrays)
                 for i, name in enumerate(ds_names):
                     for j, metric in enumerate(["snr", "err_std", "beta"]):
                         result[(metric, name)][0] = res[j][i]
@@ -1799,14 +1849,27 @@ class TripleCollocationMetrics(MetadataMetrics, PairwiseMetricsMixin):
             try:
                 # handle failing bootstrapping because e.g.
                 # too small sample size
-                res = tcol_metrics_with_bootstrapped_ci(
-                    *arrays, minimum_data_length=self.bootstrap_min_obs,
-                    alpha=self.bootstrap_alpha)
-                for i, name in enumerate(ds_names):
-                    for j, metric in enumerate(["snr", "err_std", "beta"]):
-                        result[(metric, name)][0] = res[j][0][i]
-                        result[(metric + "_ci_lower", name)][0] = res[j][1][i]
-                        result[(metric + "_ci_upper", name)][0] = res[j][2][i]
+                if _GPU_AVAILABLE:
+                    from pytesmo.gpu.bootstrap import tcol_metrics_with_bootstrapped_ci as gpu_tcol_bootstrap
+                    res = gpu_tcol_bootstrap(
+                        *arrays, minimum_data_length=self.bootstrap_min_obs,
+                        alpha=self.bootstrap_alpha)
+                    # GPU bootstrap returns ((snr, snr_l, snr_u), (err, err_l, err_u), (beta, beta_l, beta_u))
+                    # Each element is a 1D array of length 3
+                    for i, name in enumerate(ds_names):
+                        for j, metric in enumerate(["snr", "err_std", "beta"]):
+                            result[(metric, name)][0] = res[j][0][i]
+                            result[(metric + "_ci_lower", name)][0] = res[j][1][i]
+                            result[(metric + "_ci_upper", name)][0] = res[j][2][i]
+                else:
+                    res = tcol_metrics_with_bootstrapped_ci(
+                        *arrays, minimum_data_length=self.bootstrap_min_obs,
+                        alpha=self.bootstrap_alpha)
+                    for i, name in enumerate(ds_names):
+                        for j, metric in enumerate(["snr", "err_std", "beta"]):
+                            result[(metric, name)][0] = res[j][0][i]
+                            result[(metric + "_ci_lower", name)][0] = res[j][1][i]
+                            result[(metric + "_ci_upper", name)][0] = res[j][2][i]
                 result["status"][0] = eh.OK
             except ValueError:
                 # if the calculation fails, the template results (np.nan) are used

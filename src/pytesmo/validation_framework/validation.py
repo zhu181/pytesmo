@@ -194,6 +194,13 @@ class Validation(object):
         rename_cols=True,
         only_with_reference=False,
         handle_errors='raise',
+        use_gpu=False,
+        parallel=None,
+        n_workers=-1,
+        batch_size=1000,
+        output_format='netcdf',
+        output_path=None,
+        progress=True,
     ) -> Mapping[Tuple[str], Mapping[str, np.ndarray]]:
         """
         The argument iterables (lists or numpy.ndarrays) are processed one
@@ -229,6 +236,21 @@ class Validation(object):
             * `raise`: If an error occurs during validation, raise exception.
             * `ignore`: If an error occurs, assign the correct return code
               to the result template and continue with the next GPI.
+        use_gpu : bool, optional (default: False)
+            Use GPU acceleration via CuPy for metric calculations.
+            Requires `pytesmo[gpu]` extra and CUDA-enabled GPU.
+        parallel : str or None, optional (default: None)
+            Parallel backend to use. Options: 'dask', None (sequential).
+        n_workers : int, optional (default: -1)
+            Number of parallel workers. -1 uses all available CPUs/GPUs.
+        batch_size : int, optional (default: 1000)
+            Number of jobs per batch for parallel processing.
+        output_format : str, optional (default: 'netcdf')
+            Output format for intermediate results: 'netcdf', 'zarr', 'parquet'.
+        output_path : str or None, optional (default: None)
+            Path for intermediate output files. If None, uses temp directory.
+        progress : bool, optional (default: True)
+            Show progress bar during processing.
 
         Returns
         -------
@@ -236,14 +258,25 @@ class Validation(object):
             :Keys: result names, combinations of
                   (referenceDataset.column, otherDataset.column)
             :Values: dict containing the elements returned
-                  by metrics_calculator
+                   by metrics_calculator
 
-        """
+"""
         handle_errors = handle_errors.lower()
         error_handling_options = ["raise", "ignore"]
         assert handle_errors in error_handling_options, (
             f"'handle_errors' must be one of {error_handling_options}"
         )
+
+        # Validate GPU/parallel options
+        if use_gpu:
+            try:
+                from pytesmo.gpu import is_gpu_available
+                if not is_gpu_available():
+                    raise RuntimeError("GPU requested but CuPy not available. "
+                                     "Install with: pip install pytesmo[gpu]")
+            except ImportError:
+                raise RuntimeError("GPU requested but pytesmo.gpu module not available. "
+                                 "Install with: pip install pytesmo[gpu]")
 
         if len(args) > 0:
             gpis, lons, lats, args = args_to_iterable(
@@ -252,9 +285,14 @@ class Validation(object):
         else:
             gpis, lons, lats = args_to_iterable(gpis, lons, lats)
 
-        results = {}
-        for gpi_info in zip(gpis, lons, lats, *args):
+        # Prepare jobs
+        jobs = list(zip(gpis, lons, lats, *args))
+        
+        if not jobs:
+            return {}
 
+        # Prepare job function with bound parameters
+        def _process_job(gpi_info):
             try:
                 try:
                     df_dict = self.data_manager.get_data(
@@ -294,7 +332,34 @@ class Validation(object):
                                (isinstance(k, tuple) and k[1] == "status"):
                                 result[key][0][k][0] = retcode
 
-            # add result of one gpi to global results dictionary
+            return result
+
+        # Execute jobs
+        if parallel == 'dask':
+            from pytesmo.parallel import DaskParallelExecutor
+            
+            executor = DaskParallelExecutor(n_workers=n_workers)
+            try:
+                job_results = executor.map(
+                    _process_job, jobs, 
+                    batch_size=batch_size, 
+                    progress=progress,
+                    output_format=output_format,
+                    output_path=output_path
+                )
+            finally:
+                executor.close()
+        else:
+            # Sequential processing
+            from tqdm import tqdm
+            job_results = []
+            iterator = tqdm(jobs, desc="Processing", disable=not progress)
+            for job in iterator:
+                job_results.append(_process_job(job))
+
+        # Aggregate results
+        results = {}
+        for result in job_results:
             for r in result:
                 if r not in results:
                     results[r] = []

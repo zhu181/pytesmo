@@ -43,16 +43,72 @@ import numpy as np
 from scipy import stats
 import warnings
 
+# Try to import GPU-accelerated versions first
+try:
+    from pytesmo.gpu import is_gpu_available
+    from pytesmo.gpu.pairwise import (
+        bias as _gpu_bias,
+        mse_decomposition as _gpu_mse_decomposition,
+        rmsd as _gpu_rmsd,
+        ubrmsd as _gpu_ubrmsd,
+        pearson_r as _gpu_pearson_r,
+        spearman_r as _gpu_spearman_r,
+        kendall_tau as _gpu_kendall_tau,
+        rolling_pr_rmsd as _gpu_rolling_pr_rmsd,
+    )
+    _GPU_AVAILABLE = is_gpu_available()
+except ImportError:
+    _GPU_AVAILABLE = False
+
+# Fallback to CPU implementations
 from pytesmo.metrics._fast_pairwise import (  # noqa: F401
-    bias,
-    mse_bias,
-    mse_var,
-    mse_corr,
-    mse_decomposition,
-    RSS,
-    _ubrmsd,
-    rolling_pr_rmsd,
+    bias as _cpu_bias,
+    mse_bias as _cpu_mse_bias,
+    mse_var as _cpu_mse_var,
+    mse_corr as _cpu_mse_corr,
+    mse_decomposition as _cpu_mse_decomposition,
+    RSS as _cpu_RSS,
+    _ubrmsd as _cpu_ubrmsd,
+    rolling_pr_rmsd as _cpu_rolling_pr_rmsd,
 )
+
+
+def _select_impl(gpu_func, cpu_func):
+    """Select GPU or CPU implementation based on availability."""
+    if _GPU_AVAILABLE:
+        return gpu_func
+    return cpu_func
+
+
+# CPU implementations for pearson, spearman, kendall (use scipy.stats)
+def _cpu_pearsonr(x, y):
+    return stats.pearsonr(x, y)
+
+
+def _cpu_spearmanr(x, y):
+    return stats.spearmanr(x, y)
+
+
+def _cpu_kendalltau(x, y):
+    return stats.kendalltau(x, y)
+
+
+# Public API - automatically uses GPU if available
+bias = _select_impl(_gpu_bias, _cpu_bias)
+mse_decomposition = _select_impl(_gpu_mse_decomposition, _cpu_mse_decomposition)
+rmsd = _select_impl(_gpu_rmsd, lambda x, y, ddof=0: np.sqrt(_cpu_mse_decomposition(x, y)[0]) if ddof == 0 else np.sqrt(_cpu_RSS(x, y) / (len(x) - ddof)))
+ubrmsd = _select_impl(_gpu_ubrmsd, _cpu_ubrmsd)
+pearson_r = _select_impl(_gpu_pearson_r, _cpu_pearsonr)
+spearman_r = _select_impl(_gpu_spearman_r, _cpu_spearmanr)
+kendall_tau = _select_impl(_gpu_kendall_tau, _cpu_kendalltau)
+rolling_pr_rmsd = _select_impl(_gpu_rolling_pr_rmsd, _cpu_rolling_pr_rmsd)
+
+# Re-export CPU-only functions
+mse_bias = _cpu_mse_bias
+mse_var = _cpu_mse_var
+mse_corr = _cpu_mse_corr
+RSS = _cpu_RSS
+_ubrmsd = _cpu_ubrmsd
 
 
 has_ci = [
@@ -61,6 +117,19 @@ has_ci = [
     "pearson_r",
     "spearman_r",
     "kendall_tau",
+]
+
+no_ci = [
+    "aad",
+    "mad",
+    "mse_bias",
+    "msd",
+    "rmsd",
+    "nrmsd",
+    "mse_corr",
+    "mse_var",
+    "nash_sutcliffe",
+    "index_of_agreement",
 ]
 
 no_ci = [
@@ -540,3 +609,70 @@ def nash_sutcliffe(o, p):
         Nash Sutcliffe model efficiency coefficient E.
     """
     return 1 - (np.sum((o - p) ** 2)) / (np.sum((o - np.mean(o)) ** 2))
+
+
+# Re-apply GPU dispatch AFTER all function definitions.
+# The def statements above would otherwise override the dispatch
+# assignments at the top of this module.
+bias = _select_impl(_gpu_bias, bias)
+mse_decomposition = _select_impl(_gpu_mse_decomposition, mse_decomposition)
+
+
+from functools import wraps
+
+
+@wraps(_gpu_rmsd)
+def _gpu_rmsd_wrap(x, y, ddof=0, *args, **kwargs):
+    if ddof != 0:
+        warnings.warn(
+            "ddof is deprecated and might be removed in future versions of"
+            " pytesmo.",
+            category=DeprecationWarning,
+        )
+        return np.sqrt(_cpu_RSS(x, y) / (len(x) - ddof))
+    return _gpu_rmsd(x, y)
+
+
+@wraps(_gpu_ubrmsd)
+def _gpu_ubrmsd_wrap(x, y, ddof=0, *args, **kwargs):
+    if ddof != 0:
+        warnings.warn(
+            "ddof is deprecated and might be removed in future versions of"
+            " pytesmo.",
+            category=DeprecationWarning,
+        )
+        return np.sqrt(_cpu_RSS(x - np.mean(x), y - np.mean(y)) / (len(x) - ddof))
+    return _gpu_ubrmsd(x, y)
+
+
+rmsd = _select_impl(_gpu_rmsd_wrap, rmsd)
+ubrmsd = _select_impl(_gpu_ubrmsd_wrap, ubrmsd)
+
+
+def _gpu_scalar(f):
+    """Extract scalar metric value from a GPU function returning (value, p)."""
+    from functools import wraps
+    @wraps(f)
+    def wrapped(x, y, *args, **kwargs):
+        result = f(x, y, *args, **kwargs)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
+    return wrapped
+
+
+pearson_r = _select_impl(_gpu_scalar(_gpu_pearson_r), pearson_r)
+spearman_r = _select_impl(_gpu_scalar(_gpu_spearman_r), spearman_r)
+kendall_tau = _select_impl(_gpu_scalar(_gpu_kendall_tau), kendall_tau)
+
+
+def _gpu_rolling_pr_rmsd_to_numpy(*args, **kwargs):
+    pr, rmsd = _gpu_rolling_pr_rmsd(*args, **kwargs)
+    if hasattr(pr, 'get'):
+        pr = pr.get()
+    if hasattr(rmsd, 'get'):
+        rmsd = rmsd.get()
+    return np.asarray(pr), np.asarray(rmsd)
+
+
+rolling_pr_rmsd = _select_impl(_gpu_rolling_pr_rmsd_to_numpy, rolling_pr_rmsd)
