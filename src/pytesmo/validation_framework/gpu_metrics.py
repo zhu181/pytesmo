@@ -536,7 +536,7 @@ def _tcol_from_cov(c00, c11, c22, c01, c02, c12, ref_pos):
 
 
 def _tcol_with_bootstrap(valid_arr, ref_pos, columns, refname):
-    """Bootstrap TCA ¡ª currently falls back to scalar CPU per gpi."""
+    """Bootstrap TCA currently falls back to scalar CPU per gpi."""
     import warnings
     try:
         from pytesmo.metrics.confidence_intervals import tcol_metrics_with_bootstrapped_ci
@@ -560,4 +560,3 @@ def _tcol_with_bootstrap(valid_arr, ref_pos, columns, refname):
             err_out[k][j] = err[k]
             beta_out[k][j] = beta[k]
     return snr_out, err_out, beta_out
-
