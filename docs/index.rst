@@ -16,6 +16,8 @@
    Soil Water Index Computation <examples/swi_calc>
    Example: Validate ASCAT with ISMN <examples/compare_ASCAT_ISMN>
 
+   GPU Acceleration & Parallel Processing <gpu_acceleration>
+
    License <license>
    Authors <authors>
    Changelog <changelog>

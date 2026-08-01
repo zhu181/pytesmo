@@ -5,6 +5,20 @@ Changelog
 Unreleased changes in master
 ============================
 
+- Added optional GPU acceleration for metric computation via CuPy (``pytesmo[gpu]``).
+  GPU-accelerated pairwise metrics, triple collocation, and confidence intervals
+  (analytical and bootstrap) automatically dispatch to the GPU when CuPy is available.
+  See ``docs/gpu_acceleration.rst``.
+- Added optional parallel processing of the validation workflow via Dask
+  (``Validation.calc(..., parallel='dask', n_workers=4)``). Jobs are processed in
+  batches across ``LocalCluster`` workers with progress bars, retries, and optional
+  intermediate Zarr/Parquet output.
+- Added chunked intermediate I/O layer: Zarr (``pytesmo.io.zarr_writer``),
+  Parquet (``pytesmo.io.parquet_writer``) and final netCDF4 output
+  (``pytesmo.io.netcdf_writer``) with conversion from Zarr/Parquet stores.
+- Added ``pytesmo.parallel`` module with ``SequentialExecutor``,
+  ``DaskParallelExecutor``, ``get_executor()`` and ``parallel_map()``.
+
 Version 0.18.1, 2026-04-30
 ============================
 - Fix bug in ``_unique_percentile_interpolation()`` in ``cdf_matching``, by forcing percentiles to be np.array

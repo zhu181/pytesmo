@@ -76,6 +76,42 @@ happen automatically, if you have a C compiler installed (e.g.
     python setup.py build_ext --inplace --cythonize  # optional compile cython C extensions
     pytest  # Run tests to check if everything works
 
+Optional: GPU Acceleration & Parallel Processing
+------------------------------------------------
+
+pytesmo can accelerate metric computations with CUDA GPUs (via CuPy) and
+parallelize validation jobs across workers (via Dask). Install the optional
+dependencies with:
+
+.. code-block:: bash
+
+    pip install pytesmo[gpu]
+
+GPU acceleration and Dask parallel processing are fully optional: without
+CuPy, all metrics transparently fall back to NumPy, and without Dask jobs
+run sequentially. See the `GPU Acceleration & Parallel Processing
+<https://tuw-geo-pytesmo.readthedocs.io/en/latest/gpu_acceleration.html>`_
+documentation page for details and examples.
+
+.. code-block:: python
+
+    from pytesmo.validation_framework.validation import Validation
+
+    # GPU-accelerated validation
+    results = process.calc(gpis, lons, lats, use_gpu=True)
+
+    # Parallel with Dask + GPU
+    results = process.calc(
+        gpis, lons, lats,
+        use_gpu=True,
+        parallel='dask',
+        n_workers=4,
+        batch_size=1000,
+        output_format='zarr',
+        output_path='/tmp/validation_output',
+        progress=True,
+    )
+
 Supported Products
 ==================
 
