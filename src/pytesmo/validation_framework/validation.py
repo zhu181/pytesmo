@@ -201,6 +201,7 @@ class Validation(object):
         output_format='netcdf',
         output_path=None,
         progress=True,
+        parallel_kwargs=None,
     ) -> Mapping[Tuple[str], Mapping[str, np.ndarray]]:
         """
         The argument iterables (lists or numpy.ndarrays) are processed one
@@ -252,6 +253,12 @@ class Validation(object):
         progress : bool, optional (default: True)
             Show progress bar during processing.
 
+        parallel_kwargs : dict, optional (default: None)
+            Extra keyword arguments passed to the parallel executor
+            (e.g. ``{"dashboard": False, "processes": False}`` for
+            :class:`pytesmo.parallel.DaskParallelExecutor`). Ignored unless
+            ``parallel='dask'``.
+
         Returns
         -------
         compact_results : dict of dicts
@@ -292,7 +299,12 @@ class Validation(object):
             return {}
 
         # Prepare job function with bound parameters
-        def _process_job(gpi_info):
+        def _process_job(*gpi_info):
+            # Accept either a single (gpi, lon, lat) tuple (sequential
+            # path) or the tuple splatted into separate arguments (parallel
+            # executor path) and normalize to the tuple.
+            if len(gpi_info) == 1 and isinstance(gpi_info[0], (tuple, list)):
+                gpi_info = gpi_info[0]
             try:
                 try:
                     df_dict = self.data_manager.get_data(
@@ -338,7 +350,9 @@ class Validation(object):
         if parallel == 'dask':
             from pytesmo.parallel import DaskParallelExecutor
             
-            executor = DaskParallelExecutor(n_workers=n_workers)
+            executor = DaskParallelExecutor(
+                n_workers=n_workers, **(parallel_kwargs or {})
+            )
             try:
                 job_results = executor.map(
                     _process_job, jobs, 
@@ -360,6 +374,11 @@ class Validation(object):
         # Aggregate results
         results = {}
         for result in job_results:
+            # Executors may return an error dict for jobs that failed outside
+            # of perform_validation; skip them instead of crashing the merge.
+            if not isinstance(result, dict) or "error" in result:
+                logging.error(f"Skipping failed job result: {result}")
+                continue
             for r in result:
                 if r not in results:
                     results[r] = []

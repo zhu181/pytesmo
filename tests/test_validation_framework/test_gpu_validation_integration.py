@@ -28,6 +28,12 @@ try:
 except ImportError:
     gpu_available = False
 
+dask_available = True
+try:
+    import dask.distributed  # noqa: F401
+except ImportError:
+    dask_available = False
+
 
 def _run_validation(use_gpu=False, **kwargs):
     datasets = setup_TestDatasets()
@@ -126,3 +132,27 @@ class TestSequentialIntegration:
         flat = _flatten(results)
         assert len(flat) > 0
         assert any("bias" in k[2] or "RMSD" in k[2] for k in flat)
+
+
+class TestDaskIntegration:
+    """Dask parallel path must produce the same results as the sequential one."""
+
+    @pytest.mark.skipif(not dask_available, reason="dask not installed")
+    def test_dask_matches_sequential(self):
+        cpu = _flatten(_run_validation(use_gpu=False))
+        dask = _flatten(
+            _run_validation(
+                use_gpu=False, parallel="dask", n_workers=1,
+                parallel_kwargs={"dashboard": False},
+            )
+        )
+
+        assert set(cpu.keys()) == set(dask.keys())
+
+        for key, cpu_val in cpu.items():
+            dask_val = dask[key]
+            assert cpu_val.shape == dask_val.shape, f"shape mismatch for {key}"
+            nptest.assert_allclose(
+                cpu_val, dask_val, rtol=1e-6, atol=1e-8,
+                err_msg=f"value mismatch for {key}",
+            )

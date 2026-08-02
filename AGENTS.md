@@ -94,6 +94,8 @@ Implementing CuPy-based GPU acceleration and Dask-based parallel processing for 
   - `_gpu_rmsd_wrap`/`_gpu_ubrmsd_wrap` preserve the deprecated `ddof` kwarg + DeprecationWarning.
   - `metric_calculators.py` TripleCollocationMetrics squeezes the `(1,3)` batch dim from GPU `tcol_metrics`.
   - `parallel.py::_init_worker_gpu` uses the `client` property (lazy cluster start).
+  - `validation.py::calc::_process_job` now accepts the `(gpi, lon, lat)` tuple either as a single argument (sequential path) or splatted into separate arguments (Dask executor path, which calls `func(*job)`); previously the Dask path failed every job with "takes 1 positional argument but 3 were given".
+  - `validation.py::calc` result merge now skips executor-level error dicts (`{'error': ..., 'job': ...}`) instead of crashing with "can only concatenate list (not str) to list".
 - **I/O layer bug fixes** (found via new round-trip tests):
   - zarr 3.x API: `zarr.Blosc` → `zarr.codecs.BloscCodec`; `DirectoryStore` → plain path string; `create_dataset` → `create_array`; `consolidate_metadata` wrapped in try/except.
   - netCDF4: `createVariable` uses `zlib=` + `complevel=` (not `compression`/`compression_level`); missing integer metadata values filled with `0` (not NaN) to avoid "cannot convert float NaN to integer".
@@ -106,7 +108,7 @@ Implementing CuPy-based GPU acceleration and Dask-based parallel processing for 
 - **`tests/test_gpu.py`** (16 tests) — GPU/CPU numerical equivalence: tcol metrics (incl. beta/SNR/err), tcol bootstrap (percentile/basic/BCa), pairwise metrics, pairwise bootstrap. Uses `_numpy(arr)` helper that `.get()`s CuPy arrays and `.squeeze()`s to align `(1,3)` GPU batch dims with CPU `(3,)`.
 - **`tests/test_parallel.py`** (15 tests) — `SequentialExecutor` + `DaskParallelExecutor` (real LocalCluster, `dashboard=False` for test hygiene): simple/tuple/empty/error-handling maps, context manager, lazy `client` start, `get_executor`, `parallel_map`.
 - **`tests/test_io_formats.py`** (12 tests) — Zarr/Parquet/netCDF round-trips, batch append, partition by metric type, Zarr→netCDF and Parquet→netCDF conversion.
-- **`tests/test_gpu_validation_integration.py`** (3 tests) — full `Validation` workflow (DataManager → temporal matcher → `PairwiseIntercomparisonMetrics`) comparing GPU vs CPU, incl. bootstrap CIs.
+- **`tests/test_gpu_validation_integration.py`** (4 tests) — full `Validation` workflow (DataManager → temporal matcher → `PairwiseIntercomparisonMetrics`) comparing GPU vs CPU, incl. bootstrap CIs; plus `TestDaskIntegration::test_dask_matches_sequential` verifying the Dask parallel path (`parallel="dask"`, `parallel_kwargs={"dashboard": False}`) yields results identical to the sequential path.
 - **`tests/test_gpu_benchmarks.py`** (3 tests) — sanity-check GPU not pathologically slower than CPU (bootstrap, `_welford_batch` vs serial loop, tcol).
 
 ### 🔄 In Progress / To Do
