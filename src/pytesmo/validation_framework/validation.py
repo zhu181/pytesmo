@@ -22,6 +22,18 @@ from distutils.version import LooseVersion
 import pytesmo.validation_framework.error_handling as eh
 
 
+def _is_status_key(k):
+    """Check whether a result key is a status field.
+
+    Status keys appear either as the plain string ``"status"`` or, when a
+    calculator is wrapped by an adapter (e.g. for stability/intra-annual
+    sub-windows), as ``"<window>|status"`` or a ``(<window>, "status")`` tuple.
+    """
+    if isinstance(k, str):
+        return k == "status" or k.endswith("|status")
+    return isinstance(k, tuple) and len(k) >= 1 and k[-1] == "status"
+
+
 class Validation(object):
 
     """
@@ -340,8 +352,7 @@ class Validation(object):
                     for key in result:
                         for k in result[key][0].keys():
                             # default case or subgroups status update
-                            if (isinstance(k, str) and k == "status") or \
-                               (isinstance(k, tuple) and k[1] == "status"):
+                            if _is_status_key(k):
                                 result[key][0][k][0] = retcode
 
             return result
@@ -565,7 +576,9 @@ class Validation(object):
                         )
                     else:
                         metrics = dummy_result()
-                        metrics["status"][0] = eh.METRICS_CALCULATION_FAILED
+                        for mk in metrics.keys():
+                            if _is_status_key(mk):
+                                metrics[mk][0] = eh.METRICS_CALCULATION_FAILED
                 results[result_key].append(metrics)
 
         return matched_n, results, used_data

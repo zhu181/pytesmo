@@ -236,7 +236,9 @@ class MetadataMetrics(object):
         if self.metadata_template is not None:
             for key, value in self.metadata_template.items():
                 try:
-                    dataset[key][0] = gpi_info[3][key]
+                    # keep the template default when the field is missing
+                    # from the job metadata instead of failing the whole job
+                    dataset[key][0] = gpi_info[3].get(key, dataset[key][0])
                 except (IndexError):
                     raise Exception(
                         "No metadata has been provided to the job. "
