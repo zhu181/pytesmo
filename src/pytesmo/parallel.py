@@ -602,12 +602,24 @@ class DaskParallelExecutor(ParallelExecutor):
         return flat_results
 
     def close(self):
-        """Shutdown cluster."""
+        """Shutdown cluster.
+
+        Teardown errors (e.g. a worker that is slow to terminate) are logged
+        but not raised: by the time ``close()`` is called the computation has
+        already finished, so a shutdown failure must not be mistaken for a
+        compute failure by callers.
+        """
         if self._client:
-            self._client.close()
+            try:
+                self._client.close()
+            except Exception as e:
+                logger.warning(f"Error closing distributed client during shutdown: {e}")
             self._client = None
         if self._cluster:
-            self._cluster.close()
+            try:
+                self._cluster.close()
+            except Exception as e:
+                logger.warning(f"Error closing cluster during shutdown: {e}")
             self._cluster = None
 
     def __enter__(self):
