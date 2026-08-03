@@ -30,10 +30,10 @@
 Test for temporal matchers
 '''
 
-import numpy as np
-import pandas as pd
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytesmo.validation_framework.temporal_matchers as temporal_matchers
 
 

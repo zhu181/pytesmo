@@ -4,10 +4,10 @@ import pandas as pd
 
 def create_correlated_data(n_datasets, n, r):
     """Creates n_datasets random timeseries with specified correlation"""
-    C = np.ones((n_datasets, n_datasets)) * r
+    C = np.ones((n_datasets, n_datasets)) * r  # noqa: N806
     for i in range(n_datasets):
         C[i, i] = 1
-    A = np.linalg.cholesky(C)
+    A = np.linalg.cholesky(C)  # noqa: N806
 
     return (A @ np.random.randn(n_datasets, n)).T
 

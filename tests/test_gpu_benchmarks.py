@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Benchmark tests validating GPU speedup for pytesmo metric functions.
 
@@ -33,12 +32,12 @@ def _bench(func, repeats=3):
 class TestGPUSpeedup:
     def test_bootstrap_speedup(self):
         """GPU bootstrap should not be dramatically slower than CPU."""
-        from pytesmo.metrics import with_bootstrapped_ci
         from pytesmo.gpu.bootstrap import (
             with_bootstrapped_ci as gpu_with_bootstrapped_ci,
         )
-        from pytesmo.metrics.pairwise import pearson_r as cpu_pearson
         from pytesmo.gpu.pairwise import pearson_r as gpu_pearson
+        from pytesmo.metrics import with_bootstrapped_ci
+        from pytesmo.metrics.pairwise import pearson_r as cpu_pearson
 
         rng = np.random.RandomState(42)
         x = rng.randn(2000)
@@ -88,8 +87,8 @@ class TestGPUSpeedup:
 
     def test_tcol_batch_speedup(self):
         """GPU tcol metrics should be at least as fast as CPU tcol."""
-        from pytesmo.metrics.tcol import tcol_metrics as cpu_tcol
         from pytesmo.gpu.tcol import tcol_metrics as gpu_tcol
+        from pytesmo.metrics.tcol import tcol_metrics as cpu_tcol
 
         rng = np.random.RandomState(7)
         x = rng.randn(1000)

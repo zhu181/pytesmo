@@ -32,10 +32,10 @@ Created on Tue Nov  3 09:53:23 2015
 Module for testing the scaling module
 '''
 
-import pytesmo.scaling as scaling
 import numpy as np
-import pandas as pd
 import numpy.testing as nptest
+import pandas as pd
+import pytesmo.scaling as scaling
 import pytest
 
 scaling_methods = list(scaling.get_scaling_method_lut().keys())

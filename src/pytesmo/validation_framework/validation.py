@@ -4,22 +4,20 @@ except ImportError:
     # python 3
     pass
 
+import logging
+import warnings
+from collections.abc import Mapping
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from pygeogrids.grids import CellGrid
-import warnings
-import logging
-from typing import Mapping, Tuple, List
-
-from pytesmo.validation_framework.data_manager import DataManager
-from pytesmo.validation_framework.data_manager import get_result_names
-from pytesmo.validation_framework.data_manager import get_result_combinations
-from pytesmo.validation_framework.data_scalers import DefaultScaler
-import pytesmo.validation_framework.temporal_matchers as temporal_matchers
-from pytesmo.utils import ensure_iterable
-from distutils.version import LooseVersion
 
 import pytesmo.validation_framework.error_handling as eh
+import pytesmo.validation_framework.temporal_matchers as temporal_matchers
+from pytesmo.utils import ensure_iterable
+from pytesmo.validation_framework.data_manager import DataManager, get_result_combinations, get_result_names
+from pytesmo.validation_framework.data_scalers import DefaultScaler
 
 
 def _is_status_key(k):
@@ -34,8 +32,7 @@ def _is_status_key(k):
     return isinstance(k, tuple) and len(k) >= 1 and k[-1] == "status"
 
 
-class Validation(object):
-
+class Validation:
     """
     Class for the validation process.
 
@@ -161,9 +158,7 @@ class Validation(object):
                 " instead. Have a look at the documentation of the metric "
                 "calculators for more info."
             )
-            self.temp_matching = temporal_matchers.BasicTemporalMatching(
-                window=temporal_window
-            ).combinatory_matcher
+            self.temp_matching = temporal_matchers.BasicTemporalMatching(window=temporal_window).combinatory_matcher
 
         self.temporal_ref = temporal_ref
         if self.temporal_ref is None:
@@ -180,14 +175,10 @@ class Validation(object):
             # is necessary for temporally matching the masking datasets to the
             # common time stamps. Use _reference here to make a clash with the
             # names of the masking datasets unlikely
-            masking_datasets.update(
-                {"_reference": datasets[self.temporal_ref]}
-            )
-            self.masking_dm = DataManager(
-                masking_datasets, "_reference", period=period
-            )
+            masking_datasets.update({"_reference": datasets[self.temporal_ref]})
+            self.masking_dm = DataManager(masking_datasets, "_reference", period=period)
 
-        if type(scaling) == str:
+        if isinstance(scaling, str):
             self.scaling = DefaultScaler(scaling)
         else:
             self.scaling = scaling
@@ -205,16 +196,18 @@ class Validation(object):
         *args,
         rename_cols=True,
         only_with_reference=False,
-        handle_errors='raise',
+        handle_errors="raise",
         use_gpu=False,
         parallel=None,
         n_workers=-1,
         batch_size=1000,
-        output_format='netcdf',
+        output_format="netcdf",
         output_path=None,
         progress=True,
+        progress_callback=None,
+        batch_callback=None,
         parallel_kwargs=None,
-    ) -> Mapping[Tuple[str], Mapping[str, np.ndarray]]:
+    ) -> Mapping[tuple[str], Mapping[str, np.ndarray]]:
         """
         The argument iterables (lists or numpy.ndarrays) are processed one
         after the other in tuples of the form (gpis[n], lons[n], lats[n],
@@ -265,6 +258,20 @@ class Validation(object):
         progress : bool, optional (default: True)
             Show progress bar during processing.
 
+        progress_callback : callable, optional (default: None)
+            Callable ``(done, total)`` invoked after each completed batch in the
+            client process (Dask backend only). Useful for logging progress
+            into a structured log.
+
+        batch_callback : callable, optional (default: None)
+            Callable ``(compact_results, n_gpis)`` invoked after each completed
+            batch with that batch's compact results and its gpi count. When set
+            (Dask backend only), ``calc`` streams batches instead of aggregating
+            them: each batch is passed to the callback as soon as it finishes and
+            is released, bounding client memory to one batch. The return value is
+            then a summary dict ``{"n_gpis", "batches", "keys"}`` instead of the
+            full merged results.
+
         parallel_kwargs : dict, optional (default: None)
             Extra keyword arguments passed to the parallel executor
             (e.g. ``{"dashboard": False, "processes": False}`` for
@@ -279,34 +286,31 @@ class Validation(object):
             :Values: dict containing the elements returned
                    by metrics_calculator
 
-"""
+        """
         handle_errors = handle_errors.lower()
         error_handling_options = ["raise", "ignore"]
-        assert handle_errors in error_handling_options, (
-            f"'handle_errors' must be one of {error_handling_options}"
-        )
+        assert handle_errors in error_handling_options, f"'handle_errors' must be one of {error_handling_options}"
 
         # Validate GPU/parallel options
         if use_gpu:
             try:
                 from pytesmo.gpu import is_gpu_available
+
                 if not is_gpu_available():
-                    raise RuntimeError("GPU requested but CuPy not available. "
-                                     "Install with: pip install pytesmo[gpu]")
+                    raise RuntimeError("GPU requested but CuPy not available. Install with: pip install pytesmo[gpu]")
             except ImportError:
-                raise RuntimeError("GPU requested but pytesmo.gpu module not available. "
-                                 "Install with: pip install pytesmo[gpu]")
+                raise RuntimeError(
+                    "GPU requested but pytesmo.gpu module not available. Install with: pip install pytesmo[gpu]"
+                )
 
         if len(args) > 0:
-            gpis, lons, lats, args = args_to_iterable(
-                gpis, lons, lats, *args, n=3
-            )
+            gpis, lons, lats, args = args_to_iterable(gpis, lons, lats, *args, n=3)
         else:
             gpis, lons, lats = args_to_iterable(gpis, lons, lats)
 
         # Prepare jobs
         jobs = list(zip(gpis, lons, lats, *args))
-        
+
         if not jobs:
             return {}
 
@@ -319,13 +323,9 @@ class Validation(object):
                 gpi_info = gpi_info[0]
             try:
                 try:
-                    df_dict = self.data_manager.get_data(
-                        gpi_info[0], gpi_info[1], gpi_info[2]
-                    )
+                    df_dict = self.data_manager.get_data(gpi_info[0], gpi_info[1], gpi_info[2])
                 except Exception as e:
-                    raise eh.DataManagerError(
-                        f"Getting the data for gpi {gpi_info} failed with"
-                        f" error: {e}")
+                    raise eh.DataManagerError(f"Getting the data for gpi {gpi_info} failed with error: {e}")
 
                 # if no data is available continue with the next gpi
                 if len(df_dict) == 0:
@@ -338,13 +338,13 @@ class Validation(object):
                     handle_errors=handle_errors,
                 )
             except Exception as e:
-                if handle_errors == 'raise':
+                if handle_errors == "raise":
                     raise e
                 elif handle_errors == "ignore":
                     logging.error(f"{gpi_info}: {e}")
                     result = self.dummy_validation_result(
-                        gpi_info, rename_cols=rename_cols,
-                        only_with_reference=only_with_reference)
+                        gpi_info, rename_cols=rename_cols, only_with_reference=only_with_reference
+                    )
                     if isinstance(e, eh.ValidationError):
                         retcode = e.return_code
                     else:
@@ -358,33 +358,55 @@ class Validation(object):
             return result
 
         # Execute jobs
-        if parallel == 'dask':
+        if parallel == "dask":
             from pytesmo.parallel import DaskParallelExecutor
-            
-            executor = DaskParallelExecutor(
-                n_workers=n_workers, **(parallel_kwargs or {})
-            )
+
+            executor = DaskParallelExecutor(n_workers=n_workers, **(parallel_kwargs or {}))
             try:
+                if batch_callback is not None:
+                    return self._run_streaming(
+                        executor,
+                        _process_job,
+                        jobs,
+                        batch_size=batch_size,
+                        progress=progress,
+                        progress_callback=progress_callback,
+                        output_format=output_format,
+                        output_path=output_path,
+                        batch_callback=batch_callback,
+                    )
                 job_results = executor.map(
-                    _process_job, jobs, 
-                    batch_size=batch_size, 
+                    _process_job,
+                    jobs,
+                    batch_size=batch_size,
                     progress=progress,
+                    progress_callback=progress_callback,
                     output_format=output_format,
-                    output_path=output_path
+                    output_path=output_path,
                 )
             finally:
                 executor.close()
         else:
             # Sequential processing
             from tqdm import tqdm
+
             job_results = []
             iterator = tqdm(jobs, desc="Processing", disable=not progress)
             for job in iterator:
                 job_results.append(_process_job(job))
 
         # Aggregate results
+        compact_results = self._compact_batch(job_results)
+
+        return compact_results
+
+    def _compact_batch(self, batch_dicts: list[Mapping]) -> Mapping[tuple[str], Mapping[str, np.ndarray]]:
+        """
+        Summarize a batch of per-gpi result dicts into a single dictionary of
+        numpy arrays per validation key (one value per gpi).
+        """
         results = {}
-        for result in job_results:
+        for result in batch_dicts:
             # Executors may return an error dict for jobs that failed outside
             # of perform_validation; skip them instead of crashing the merge.
             if not isinstance(result, dict) or "error" in result:
@@ -395,23 +417,63 @@ class Validation(object):
                     results[r] = []
                 results[r] = results[r] + result[r]
 
-        # So far, results is a dictionary mapping from a validation name/key
-        # (the involved datasets) to lists of individual result dictionaries
-        # for each gpi.
-        # Here, these lists are summarized to have a single dictionary of numpy
-        # arrays for each validation key
+        # results maps validation keys to lists of per-gpi result dicts; here the
+        # lists are summarized to a single dict of numpy arrays per key.
         compact_results = {}
         for key in results.keys():
+            if not results[key]:
+                continue
             compact_results[key] = {}
             for field_name in results[key][0].keys():
                 entries = []
                 for result in results[key]:
                     entries.append(result[field_name][0])
-                compact_results[key][field_name] = np.array(
-                    entries, dtype=results[key][0][field_name].dtype
-                )
-
+                compact_results[key][field_name] = np.array(entries, dtype=results[key][0][field_name].dtype)
         return compact_results
+
+    def _run_streaming(
+        self,
+        executor,
+        _process_job,
+        jobs,
+        batch_size=1000,
+        progress=True,
+        progress_callback=None,
+        output_format="netcdf",
+        output_path=None,
+        batch_callback=None,
+    ) -> Mapping[str, Any]:
+        """
+        Run the dask backend in streaming mode: each completed batch is compacted
+        and handed to ``batch_callback`` immediately, then released, so the
+        client only holds one batch at a time. Returns a small summary instead of
+        the full merged results.
+        """
+        total = 0
+        n_batches = 0
+        keys = []
+        seen_keys = set()
+        for batch_result in executor.map_batches_streaming(
+            _process_job,
+            jobs,
+            batch_size=batch_size,
+            progress=progress,
+            progress_callback=progress_callback,
+            output_format=output_format,
+            output_path=output_path,
+        ):
+            n_gpis = len(batch_result)
+            if n_gpis == 0:
+                continue
+            compact = self._compact_batch(batch_result)
+            batch_callback(compact, n_gpis)
+            total += n_gpis
+            n_batches += 1
+            for k in compact.keys():
+                if k not in seen_keys:
+                    seen_keys.add(k)
+                    keys.append(k)
+        return {"n_gpis": total, "batches": n_batches, "keys": keys}
 
     def perform_validation(
         self,
@@ -420,7 +482,7 @@ class Validation(object):
         rename_cols=True,
         only_with_reference=False,
         handle_errors="raise",
-    ) -> Mapping[Tuple[str], List[Mapping[str, np.ndarray]]]:
+    ) -> Mapping[tuple[str], list[Mapping[str, np.ndarray]]]:
         """
         Perform the validation for one grid point index and return the
         matched datasets as well as the calculated metrics.
@@ -481,9 +543,7 @@ class Validation(object):
         try:
             matched_n = self.temporal_match_datasets(data_df_dict)
         except Exception:
-            raise eh.TemporalMatchingError(
-                f"Temporal matching failed for gpi {gpi_info}!"
-            )
+            raise eh.TemporalMatchingError(f"Temporal matching failed for gpi {gpi_info}!")
 
         for n, k in self.metrics_c:
             metrics_calculator = self.metrics_c[(n, k)]
@@ -501,16 +561,11 @@ class Validation(object):
                 # or dictionary for n=n, k=k
                 raise eh.NoTempMatchedDataError(
                     f"No temporally matched data for ({n}, {k})"
-                    f" and metric calculator {self.metrics_c[(n,k)]}"
+                    f" and metric calculator {self.metrics_c[(n, k)]}"
                     f" for gpi {gpi_info}!"
                 )
-            result_names = get_result_combinations(
-                self.data_manager.ds_dict, n=k
-            )
-            for data, result_key in self.k_datasets_from(
-                n_matched_data, result_names
-            ):
-
+            result_names = get_result_combinations(self.data_manager.ds_dict, n=k)
+            for data, result_key in self.k_datasets_from(n_matched_data, result_names):
                 # it might also be a good idea to move this to
                 # `get_result_combinations`
                 result_ds_names = [key[0] for key in result_key]
@@ -524,8 +579,7 @@ class Validation(object):
                 if len(data) == 0:
                     if handle_errors == "raise":
                         raise eh.NoTempMatchedDataError(
-                            f"Temporal matching resulted in empty dataset for"
-                            f" {result_key} for gpi {gpi_info}"
+                            f"Temporal matching resulted in empty dataset for {result_key} for gpi {gpi_info}"
                         )
                     else:
                         metrics = dummy_result()
@@ -540,18 +594,11 @@ class Validation(object):
                 if self.scaling is not None:
                     # get scaling index by finding the column in the
                     # DataFrame that belongs to the scaling reference
-                    scaling_index = data.columns.tolist().index(
-                        self.scaling_ref
-                    )
+                    scaling_index = data.columns.tolist().index(self.scaling_ref)
                     try:
-                        data = self.scaling.scale(
-                            data, scaling_index, gpi_info
-                        )
+                        data = self.scaling.scale(data, scaling_index, gpi_info)
                     except Exception as e:
-                        raise eh.ScalingError(
-                            f"Scaling failed for {result_key} for gpi"
-                            f" {gpi_info} with error {e}!"
-                        )
+                        raise eh.ScalingError(f"Scaling failed for {result_key} for gpi {gpi_info} with error {e}!")
 
                     # Drop the scaling reference if it was not in the intended
                     # results
@@ -571,8 +618,7 @@ class Validation(object):
                 except Exception:
                     if handle_errors == "raise":
                         raise eh.MetricsCalculationError(
-                            f"Metrics calculation failed for {result_key}"
-                            f" for gpi {gpi_info}!"
+                            f"Metrics calculation failed for {result_key} for gpi {gpi_info}!"
                         )
                     else:
                         metrics = dummy_result()
@@ -588,16 +634,14 @@ class Validation(object):
         gpi_info,
         rename_cols=True,
         only_with_reference=False,
-    ) -> Mapping[Tuple[str], List[Mapping[str, np.ndarray]]]:
+    ) -> Mapping[tuple[str], list[Mapping[str, np.ndarray]]]:
         """
         Creates an empty result dictionary to be used if perform_validation
         fails
         """
         results = {}
         for n, k in self.metrics_c:
-            result_names = get_result_combinations(
-                self.data_manager.ds_dict, n=k
-            )
+            result_names = get_result_combinations(self.data_manager.ds_dict, n=k)
             for result_key in result_names:
                 # it might also be a good idea to move this to
                 # `get_result_combinations`
@@ -634,13 +678,9 @@ class Validation(object):
         matched_masking = self.temporal_match_masking_data(ref_df, gpi_info)
         # this will only be one element since n is the same as the
         # number of masking datasets
-        result_names = get_result_names(
-            self.masking_dm.ds_dict, "_reference", n=2
-        )
+        result_names = get_result_names(self.masking_dm.ds_dict, "_reference", n=2)
         choose_all = pd.DataFrame(index=ref_df.index)
-        for data, result in self.k_datasets_from(
-            matched_masking, result_names, include_scaling_ref=False
-        ):
+        for data, result in self.k_datasets_from(matched_masking, result_names, include_scaling_ref=False):
             if len(data) == 0:
                 continue
 
@@ -651,9 +691,7 @@ class Validation(object):
                     # resampling that is not easily resolved since most
                     # datatypes have no nan representation.
                     choose = pd.Series((data[key] is False), index=data.index)
-                    choose = choose.reindex(
-                        index=choose_all.index, fill_value=True
-                    )
+                    choose = choose.reindex(index=choose_all.index, fill_value=True)
                     choose_all[key] = choose.copy()
         choosing = choose_all.apply(np.all, axis=1)
 
@@ -678,13 +716,9 @@ class Validation(object):
         """
 
         # read only masking datasets and use the already read reference
-        masking_df_dict = self.masking_dm.get_other_data(
-            gpi_info[0], gpi_info[1], gpi_info[2]
-        )
+        masking_df_dict = self.masking_dm.get_other_data(gpi_info[0], gpi_info[1], gpi_info[2])
         masking_df_dict.update({"_reference": ref_df})
-        matched_masking = self.temp_matching(
-            masking_df_dict, "_reference", n=2
-        )
+        matched_masking = self.temp_matching(masking_df_dict, "_reference", n=2)
         return matched_masking
 
     def temporal_match_datasets(self, df_dict):
@@ -705,17 +739,13 @@ class Validation(object):
 
         matched_n = {}
         for n, k in self.metrics_c:
-            matched_data = self.temp_matching(
-                df_dict, self.temporal_ref, n=n, k=k
-            )
+            matched_data = self.temp_matching(df_dict, self.temporal_ref, n=n, k=k)
 
             matched_n[(n, k)] = matched_data
 
         return matched_n
 
-    def k_datasets_from(
-        self, n_matched_data, result_names, include_scaling_ref=True
-    ):
+    def k_datasets_from(self, n_matched_data, result_names, include_scaling_ref=True):
         """
         Extract k datasets from n temporally matched ones.
 
@@ -749,15 +779,11 @@ class Validation(object):
             if self.scaling is not None and include_scaling_ref:
                 # always make sure the scaling reference is included in the
                 # results otherwise the scaling will fail
-                scaling_ref_column = self.data_manager.datasets[
-                    self.scaling_ref
-                ]["columns"][0]
+                scaling_ref_column = self.data_manager.datasets[self.scaling_ref]["columns"][0]
                 scaling_result_name = (self.scaling_ref, scaling_ref_column)
                 if scaling_result_name not in result:
                     result_extract = result + (scaling_result_name,)
-            data = self.get_data_for_result_tuple(
-                n_matched_data, result_extract
-            )
+            data = self.get_data_for_result_tuple(n_matched_data, result_extract)
             yield data, result
 
     def get_data_for_result_tuple(self, n_matched_data, result_tuple):
@@ -812,9 +838,7 @@ class Validation(object):
             # which the temporal reference dataset was included in the
             # temporal matching
 
-            first_match = [
-                key for key in n_matched_data if self.temporal_ref == key[0]
-            ]
+            first_match = [key for key in n_matched_data if self.temporal_ref == key[0]]
             found_key = None
             for key in first_match:
                 for dsk in dskey:
@@ -847,9 +871,7 @@ class Validation(object):
                         cell_gpis,
                         cell_lons,
                         cell_lats,
-                    ) = self.data_manager.reference_grid.grid_points_for_cell(
-                        cell
-                    )
+                    ) = self.data_manager.reference_grid.grid_points_for_cell(cell)
                     jobs.append([cell_gpis, cell_lons, cell_lats])
             else:
                 (

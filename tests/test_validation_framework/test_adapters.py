@@ -1,24 +1,23 @@
-import pytest
+"""Test for the adapters."""
 
-from pytesmo.validation_framework.adapters import TimestampAdapter
-
-"""
-Test for the adapters.
-"""
-
+import os
+import warnings
 from datetime import datetime
+
 import numpy as np
 import numpy.testing as nptest
-import os
 import pandas as pd
-import warnings
+import pytest
+from pytesmo.validation_framework.adapters import (
+    AdvancedMaskingAdapter,
+    AnomalyAdapter,
+    AnomalyClimAdapter,
+    ColumnCombineAdapter,
+    MaskingAdapter,
+    SelfMaskingAdapter,
+    TimestampAdapter,
+)
 
-from pytesmo.validation_framework.adapters import (MaskingAdapter,
-                                                   AdvancedMaskingAdapter,
-                                                   ColumnCombineAdapter)
-from pytesmo.validation_framework.adapters import SelfMaskingAdapter
-from pytesmo.validation_framework.adapters import AnomalyAdapter
-from pytesmo.validation_framework.adapters import AnomalyClimAdapter
 from tests.test_validation_framework.test_datasets import TestDataset
 
 with warnings.catch_warnings():
@@ -241,7 +240,7 @@ def test_adapters_with_ascat():
     assert np.any(data["sm"].values != 0)
 
 
-class TestTimezoneReader(object):
+class TestTimezoneReader:
 
     def read(self, *args, **kwargs):
         data = np.arange(5.0)

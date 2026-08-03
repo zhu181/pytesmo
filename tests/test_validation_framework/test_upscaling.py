@@ -30,10 +30,9 @@
 
 import warnings
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
-
 from pytesmo.validation_framework.upscaling import Upscaling
 
 with warnings.catch_warnings():

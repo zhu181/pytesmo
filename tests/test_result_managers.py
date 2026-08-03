@@ -30,13 +30,13 @@
 Tests for the results managers.
 '''
 
-import tempfile
-import numpy as np
 import os
-import netCDF4
-import pandas as pd
+import tempfile
 
-from pytesmo.validation_framework.results_manager import netcdf_results_manager, PointDataResults
+import netCDF4
+import numpy as np
+import pandas as pd
+from pytesmo.validation_framework.results_manager import PointDataResults, netcdf_results_manager
 
 
 def test_netcdf_result_manager_n2():

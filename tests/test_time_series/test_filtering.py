@@ -29,9 +29,9 @@
 '''
 Tests for the time series filtering module
 '''
-import pytesmo.time_series.filtering as filtering
 import numpy as np
 import pandas as pd
+import pytesmo.time_series.filtering as filtering
 
 
 def test_moving_average():
@@ -112,4 +112,7 @@ def test_moving_average_min_observations():
 
     filtered = filtering.moving_average(ser, window_size=5, fillna=True, min_obs=4)
 
-    np.testing.assert_allclose(filtered.values, [np.nan, 2.5, 2.5, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+    np.testing.assert_allclose(
+        filtered.values,
+        [np.nan, 2.5, 2.5, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+    )

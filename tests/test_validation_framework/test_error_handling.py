@@ -1,16 +1,15 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytesmo.validation_framework.error_handling as eh
 import pytest
-
-from pytesmo.validation_framework.validation import Validation
+from pytesmo.validation_framework.data_manager import DataManager
 from pytesmo.validation_framework.metric_calculators import (
     PairwiseIntercomparisonMetrics,
 )
 from pytesmo.validation_framework.temporal_matchers import (
     make_combined_temporal_matcher,
 )
-import pytesmo.validation_framework.error_handling as eh
-from pytesmo.validation_framework.data_manager import DataManager
+from pytesmo.validation_framework.validation import Validation
 
 from .utils import create_datasets
 

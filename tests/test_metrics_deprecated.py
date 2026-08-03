@@ -30,18 +30,17 @@
 import numpy as np
 import numpy.testing as nptest
 import pytesmo.metrics as met
-from pytesmo.metrics import *
 import pytest
-
+from pytesmo.metrics import rmsd
 from pytesmo.metrics.deprecated import (
-    tcol_error,
-    tcol_snr,
+    kendalltau,
     pearsonr,
     spearmanr,
-    kendalltau,
+    tcol_error,
+    tcol_snr,
 )
 
-from .test_metrics import arange_testdata
+from .test_metrics import arange_testdata  # noqa: F401 (pytest fixture)
 
 
 def assert_deprecation(testfunc):
@@ -131,7 +130,7 @@ def test_pearson_recursive():
     nptest.assert_almost_equal(r, r_rec)
 
 
-def test_mse(arange_testdata):
+def test_mse(arange_testdata):  # noqa: F811 (imported pytest fixture)
     """
     Test for mse
     """

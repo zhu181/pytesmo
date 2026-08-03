@@ -33,8 +33,9 @@
 # Creation date: 2014-08-13
 
 import unittest
-import pytesmo.timedate.dekad as dk
 from datetime import datetime
+
+import pytesmo.timedate.dekad as dk
 
 
 class Test(unittest.TestCase):

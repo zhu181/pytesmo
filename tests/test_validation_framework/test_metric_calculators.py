@@ -24,43 +24,42 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from datetime import datetime
-import numpy as np
-from numpy.testing import (
-    assert_equal,
-    assert_almost_equal,
-    assert_allclose,
-)
-import pandas as pd
-from pathlib import Path
-import pytest
 import shutil
+from datetime import datetime
+from pathlib import Path
 
-from pytesmo.metrics import with_analytical_ci, with_bootstrapped_ci, pairwise
-from pytesmo.validation_framework.validation import Validation
+import numpy as np
+import pandas as pd
+import pytesmo.metrics as metrics
 import pytesmo.validation_framework.error_handling as eh
+import pytest
+from numpy.testing import (
+    assert_allclose,
+    assert_almost_equal,
+    assert_equal,
+)
+from pytesmo.metrics import pairwise, with_analytical_ci, with_bootstrapped_ci
 from pytesmo.validation_framework.metric_calculators import (
-    MetadataMetrics,
     BasicMetrics,
     BasicMetricsPlusMSE,
-    IntercomparisonMetrics,
-    TCMetrics,
     FTMetrics,
     HSAF_Metrics,
-    RollingMetrics,
+    IntercomparisonMetrics,
+    MetadataMetrics,
     PairwiseIntercomparisonMetrics,
+    RollingMetrics,
+    TCMetrics,
     TripleCollocationMetrics,
 )
 from pytesmo.validation_framework.metric_calculators_adapters import (
     MonthsMetricsAdapter,
 )
-
-from pytesmo.validation_framework.temporal_matchers import (
-    make_combined_temporal_matcher,
-    BasicTemporalMatching,
-)
 from pytesmo.validation_framework.results_manager import netcdf_results_manager
-import pytesmo.metrics as metrics
+from pytesmo.validation_framework.temporal_matchers import (
+    BasicTemporalMatching,
+    make_combined_temporal_matcher,
+)
+from pytesmo.validation_framework.validation import Validation
 
 from .utils import DummyReader
 
@@ -87,7 +86,7 @@ def make_some_data():
     return df
 
 
-def test_MetadataMetrics_calculator():
+def test_metadata_metrics_calculator():
     """
     Test MetadataMetrics.
     """
@@ -121,7 +120,7 @@ def test_MetadataMetrics_calculator():
         assert res[key] == metadata_dict[key]
 
 
-def test_BasicMetrics_calculator():
+def test_basic_metrics_calculator():
     """
     Test BasicMetrics.
     """
@@ -147,7 +146,7 @@ def test_BasicMetrics_calculator():
     assert np.isnan(res["p_R"]) or res["p_R"] == 1.0
 
 
-def test_BasicMetrics_calculator_metadata():
+def test_basic_metrics_calculator_metadata():
     """
     Test BasicMetrics with metadata.
     """
@@ -185,7 +184,7 @@ def test_BasicMetrics_calculator_metadata():
     assert res["p_R"] == np.array([1.0]) or np.isnan(res["R"])
 
 
-def test_BasicMetricsPlusMSE_calculator():
+def test_basic_metrics_plus_mse_calculator():
     """
     Test BasicMetricsPlusMSE.
     """
@@ -212,7 +211,7 @@ def test_BasicMetricsPlusMSE_calculator():
     assert res["p_R"] == np.array([1.0]) or np.isnan(res["R"])
 
 
-def test_BasicMetricsPlusMSE_calculator_metadata():
+def test_basic_metrics_plus_mse_calculator_metadata():
     """
     Test BasicMetricsPlusMSE with metadata.
     """
@@ -247,7 +246,7 @@ def test_BasicMetricsPlusMSE_calculator_metadata():
     assert res["p_R"] == np.array([1.0]) or np.isnan(res["R"])
 
 
-def test_IntercompMetrics_calculator():
+def test_intercomp_metrics_calculator():
     """
     Test IntercompMetrics.
     """
@@ -325,7 +324,7 @@ def test_IntercompMetrics_calculator():
     assert "RSS_between_ref_and_k2" in res.keys()
 
 
-def test_IntercompMetrics_calculator_metadata():
+def test_intercomp_metrics_calculator_metadata():
     """
     Test IntercompMetrics with metadata.
     """
@@ -348,7 +347,7 @@ def test_IntercompMetrics_calculator_metadata():
     assert res["network"] == np.array(["SOILSCAPE"], dtype="U256")
 
 
-def test_TC_metrics_calculator():
+def test_tc_metrics_calculator():
     """
     Test TC metrics.
     """
@@ -448,7 +447,7 @@ def test_TC_metrics_calculator():
     )
 
 
-def test_TC_metrics_calculator_metadata():
+def test_tc_metrics_calculator_metadata():
     """
     Test TC metrics with metadata.
     """
@@ -472,7 +471,7 @@ def test_TC_metrics_calculator_metadata():
     assert res["network"] == np.array(["SOILSCAPE"], dtype="U256")
 
 
-def test_FTMetrics():
+def test_ft_metrics():
     """
     Test FT metrics.
     """
@@ -492,7 +491,7 @@ def test_FTMetrics():
     assert res["ssf_fr_temp_un"] == should["ssf_fr_temp_un"]
 
 
-def test_FTMetrics_metadata():
+def test_ft_metrics_metadata():
     """
     Test FT metrics with metadata.
     """
@@ -514,7 +513,7 @@ def test_FTMetrics_metadata():
     assert res["network"] == np.array(["SOILSCAPE"], dtype="U256")
 
 
-def test_BasicSeasonalMetrics():
+def test_basic_seasonal_metrics():
     """
     Test BasicSeasonalMetrics.
     """
@@ -531,7 +530,7 @@ def test_BasicSeasonalMetrics():
     assert np.isnan(res[("ALL", "rho")])
 
 
-def test_BasicSeasonalMetrics_metadata():
+def test_basic_seasonal_metrics_metadata():
     """
     Test BasicSeasonalMetrics with metadata.
     """
@@ -556,7 +555,7 @@ def test_BasicSeasonalMetrics_metadata():
 
 @pytest.mark.filterwarnings(
     "ignore:invalid value encountered in divide*:RuntimeWarning")
-def test_HSAF_Metrics():
+def test_hsaf_metrics():
     """
     Test HSAF Metrics
     """
@@ -575,7 +574,7 @@ def test_HSAF_Metrics():
 
 @pytest.mark.filterwarnings(
     "ignore:invalid value encountered in divide*:RuntimeWarning")
-def test_HSAF_Metrics_metadata():
+def test_hsaf_metrics_metadata():
     """
     Test HSAF Metrics with metadata.
     """
@@ -594,7 +593,7 @@ def test_HSAF_Metrics_metadata():
     assert res["network"] == np.array(["SOILSCAPE"], dtype="U256")
 
 
-def test_RollingMetrics():
+def test_rolling_metrics():
     """
     Test RollingMetrics.
     """
@@ -738,11 +737,11 @@ def make_testdata_random():
 
     # generating random correlated data
     r = 0.8
-    C = np.ones((n_datasets, n_datasets)) * r
+    C = np.ones((n_datasets, n_datasets)) * r  # noqa: N806
     for i in range(n_datasets):
         C[i, i] = 1
-    A = np.linalg.cholesky(C)
-    X = (A @ np.random.randn(n_datasets, n)).T
+    A = np.linalg.cholesky(C)  # noqa: N806
+    X = (A @ np.random.randn(n_datasets, n)).T  # noqa: N806
 
     ref = X[:, 0]
     x1 = X[:, 1]
@@ -804,7 +803,7 @@ def make_testdata_random():
 @pytest.mark.parametrize("seas_metrics", [None, MonthsMetricsAdapter])
 @pytest.mark.filterwarnings(
     "ignore:invalid value encountered in divide.*:RuntimeWarning")
-def test_PairwiseIntercomparisonMetrics(testdata_generator, seas_metrics):
+def test_pairwise_intercomparison_metrics(testdata_generator, seas_metrics):
     # This test first compares the PairwiseIntercomparisonMetrics to known
     # results and then confirms that it agrees with IntercomparisonMetrics as
     # expected
@@ -964,7 +963,7 @@ def test_PairwiseIntercomparisonMetrics(testdata_generator, seas_metrics):
                 )
 
 
-def test_PairwiseIntercomparisonMetrics_confidence_intervals():
+def test_pairwise_intercomparison_metrics_confidence_intervals():
     # tests if the correct confidence intervals are returned
 
     datasets, _ = make_testdata_random()
@@ -1045,7 +1044,7 @@ def test_PairwiseIntercomparisonMetrics_confidence_intervals():
     "testdata_generator", [make_testdata_known_results, make_testdata_random]
 )
 @pytest.mark.parametrize("seas_metrics", [None, MonthsMetricsAdapter])
-def test_TripleCollocationMetrics(testdata_generator, seas_metrics):
+def test_triple_collocation_metrics(testdata_generator, seas_metrics):
     # tests by comparison of pairwise metrics to triplet metrics
 
     datasets, expected = testdata_generator()
@@ -1229,7 +1228,7 @@ def test_temporal_matching_ascat_ismn():
     assert old_results[old_key]["n_obs"] == new_results[new_key]["n_obs"]
 
 
-def test_TripleCollocationMetrics_failure():
+def test_triple_collocation_metrics_failure():
     """
     Test if TripleCollocationMetrics returns the correct status attribute if
     there is not enough data for bootstrapping.

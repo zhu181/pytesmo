@@ -1,12 +1,27 @@
 from datetime import datetime
+
 import numpy as np
 import numpy.testing as nptest
 import pandas as pd
-import pytest
-from scipy import stats
-
 import pytesmo.metrics
-from pytesmo.metrics import *
+import pytesmo.metrics.deprecated as deprecated
+import pytest
+from pytesmo.metrics import (
+    aad,
+    bias,
+    has_analytical_ci,
+    mad,
+    msd,
+    mse_bias,
+    mse_decomposition,
+    rmsd,
+    rolling_pr_rmsd,
+    tcol_metrics,
+    tcol_metrics_with_bootstrapped_ci,
+    ubrmsd,
+    with_analytical_ci,
+    with_bootstrapped_ci,
+)
 from pytesmo.metrics._fast_pairwise import (
     _moments_welford,
     _pearsonr_from_moments,
@@ -15,7 +30,7 @@ from pytesmo.metrics.pairwise import (
     has_ci,
     no_ci,
 )
-import pytesmo.metrics.deprecated as deprecated
+from scipy import stats
 
 
 @pytest.fixture
@@ -25,7 +40,7 @@ def testdata():
 
     # generate random data that is correlated with r = 0.8
     cov = np.array([[1, 0.8], [0.8, 1]])
-    X = np.linalg.cholesky(cov) @ np.random.randn(2, 1000)
+    X = np.linalg.cholesky(cov) @ np.random.randn(2, 1000)  # noqa: N806
     x, y = X[0, :], X[1, :]
     y = 1.1 * y + 0.5
     return x, y
@@ -252,11 +267,11 @@ def test_tcol_metrics_bootstrap_bad_data():
     n_datasets = 3
     n = 1000
     r = 0.8
-    C = np.ones((n_datasets, n_datasets)) * r
+    C = np.ones((n_datasets, n_datasets)) * r  # noqa: N806
     for i in range(n_datasets):
         C[i, i] = 1
-    A = np.linalg.cholesky(C)
-    X = (A @ np.random.randn(n_datasets, n)).T
+    A = np.linalg.cholesky(C)  # noqa: N806
+    X = (A @ np.random.randn(n_datasets, n)).T  # noqa: N806
 
     x, y, z = X[:, 0], X[:, 1], X[:, 2]
     (snr_result, err_result, beta_result) = tcol_metrics_with_bootstrapped_ci(
@@ -447,14 +462,14 @@ def test_pearsonr_from_moments():
     x = np.random.randn(100)
     y = np.random.randn(100) + x
 
-    R_sp, p_R_sp = stats.pearsonr(x, y)
+    R_sp, p_R_sp = stats.pearsonr(x, y)  # noqa: N806
 
     covmatrix = np.cov(x, y)
     n = len(x)
     varx = covmatrix[0, 0]
     vary = covmatrix[1, 1]
     cov = covmatrix[1, 0]
-    R, p_R = _pearsonr_from_moments(varx, vary, cov, n)
+    R, p_R = _pearsonr_from_moments(varx, vary, cov, n)  # noqa: N806
 
     nptest.assert_almost_equal(R_sp, R, 15)
     nptest.assert_almost_equal(p_R_sp, p_R, 15)

@@ -1,8 +1,5 @@
 import numpy as np
-
-from pytesmo.cdf_matching import (CDFMatching,
-                                  _matlab_percentile_values_from_sorted,
-                                  _unique_percentile_interpolation)
+from pytesmo.cdf_matching import CDFMatching, _matlab_percentile_values_from_sorted, _unique_percentile_interpolation
 
 
 def cdf_matching_testdata():

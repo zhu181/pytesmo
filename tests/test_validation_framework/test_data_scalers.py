@@ -30,10 +30,10 @@
 Tests for the data scalers.
 '''
 
-from pytesmo.validation_framework.data_scalers import CDFStoreParamsScaler
-from pygeogrids.grids import genreg_grid
 import numpy as np
 import pandas as pd
+from pygeogrids.grids import genreg_grid
+from pytesmo.validation_framework.data_scalers import CDFStoreParamsScaler
 
 
 def get_dataframe_2_col():
@@ -55,7 +55,7 @@ def get_dataframe_3_col():
     return df
 
 
-def test_CDF_storage_scaler_scale_df_2_columns(tmpdir):
+def test_cdf_storage_scaler_scale_df_2_columns(tmpdir):
 
     df = get_dataframe_2_col()
     path = str(tmpdir)
@@ -66,7 +66,7 @@ def test_CDF_storage_scaler_scale_df_2_columns(tmpdir):
                                    scaled_data['y'].values)
 
 
-def test_CDF_storage_scaler_scale_df_3_columns(tmpdir):
+def test_cdf_storage_scaler_scale_df_3_columns(tmpdir):
 
     df = get_dataframe_3_col()
     path = str(tmpdir)
@@ -79,7 +79,7 @@ def test_CDF_storage_scaler_scale_df_3_columns(tmpdir):
                                    scaled_data['z'].values)
 
 
-def test_CDF_storage_scaler_scale_df_3_columns_load_precomputed(tmpdir):
+def test_cdf_storage_scaler_scale_df_3_columns_load_precomputed(tmpdir):
 
     df = get_dataframe_3_col()
     path = str(tmpdir)
@@ -94,7 +94,7 @@ def test_CDF_storage_scaler_scale_df_3_columns_load_precomputed(tmpdir):
                                    scaled_data['z'].values)
 
 
-def test_CDF_storage_scaler_calc_parameters():
+def test_cdf_storage_scaler_calc_parameters():
 
     df = get_dataframe_2_col()
     path = 'test'
@@ -112,7 +112,7 @@ def test_CDF_storage_scaler_calc_parameters():
                                    parameters_should[key], atol=1e-10)
 
 
-def test_CDF_storage_scaler_store_load_parameters(tmpdir):
+def test_cdf_storage_scaler_store_load_parameters(tmpdir):
 
     path = str(tmpdir)
     grid = genreg_grid(1, 1).to_cell_grid(10, 10)
@@ -130,7 +130,7 @@ def test_CDF_storage_scaler_store_load_parameters(tmpdir):
                                    data_written[key], rtol=1e-10)
 
 
-def test_CDF_storage_scaler_get_parameters(tmpdir):
+def test_cdf_storage_scaler_get_parameters(tmpdir):
 
     df = get_dataframe_2_col()
     path = str(tmpdir)

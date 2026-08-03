@@ -1,4 +1,3 @@
-# coding: utf-8
 # Copyright (c) 2015,Vienna University of Technology,
 # Department of Geodesy and Geoinformation
 # All rights reserved.
@@ -31,35 +30,27 @@ Tests for the validation framework
 Created on Mon Jul  6 12:49:07 2015
 """
 
-from datetime import datetime
-import netCDF4 as nc
-import numpy as np
-import numpy.testing as nptest
 import os
-import pytest
 import tempfile
 import warnings
+from datetime import datetime
+
+import netCDF4
+import numpy as np
+import numpy.testing as nptest
 import pandas as pd
-import pytest
-
 import pygeogrids.grids as grids
-from pygeobase.io_base import GriddedTsBase
-
-import pytesmo.validation_framework.temporal_matchers as temporal_matchers
-import pytesmo.validation_framework.metric_calculators as metrics_calculators
-from pytesmo.validation_framework.results_manager import netcdf_results_manager
-from pytesmo.validation_framework.data_manager import DataManager
-from pytesmo.validation_framework.results_manager import PointDataResults
-from pytesmo.validation_framework.validation import Validation
-from pytesmo.validation_framework.validation import args_to_iterable
 import pytesmo.validation_framework.error_handling as eh
-
-from pytesmo.validation_framework.metric_calculators import (
-    PairwiseIntercomparisonMetrics)
-from pytesmo.validation_framework.temporal_matchers import (
-    make_combined_temporal_matcher)
-
+import pytesmo.validation_framework.metric_calculators as metrics_calculators
+import pytesmo.validation_framework.temporal_matchers as temporal_matchers
+import pytest
 from ismn.interface import ISMN_Interface
+from pygeobase.io_base import GriddedTsBase
+from pytesmo.validation_framework.data_manager import DataManager
+from pytesmo.validation_framework.metric_calculators import PairwiseIntercomparisonMetrics
+from pytesmo.validation_framework.results_manager import PointDataResults, netcdf_results_manager
+from pytesmo.validation_framework.temporal_matchers import make_combined_temporal_matcher
+from pytesmo.validation_framework.validation import Validation, args_to_iterable
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
@@ -69,10 +60,10 @@ from .utils import create_datasets
 
 if __name__ != "__main__":
     from tests.test_validation_framework.test_datasets import (
-        setup_TestDatasets,
-        setup_two_without_overlap,
-        setup_three_with_two_overlapping,
         MaskingTestDataset,
+        setup_test_datasets,
+        setup_three_with_two_overlapping,
+        setup_two_without_overlap,
     )
 
 
@@ -149,12 +140,12 @@ def check_results(
         vars_should = variables
     else:
         vars_should = [
-            u"n_obs", u"tau", u"gpi", u"RMSD", u"lon", u"p_tau", u"BIAS",
-            u"p_rho", u"rho", u"lat", u"R", u"p_R", u"time", u"idx",
-            u"_row_size", u"status"
+            "n_obs", "tau", "gpi", "RMSD", "lon", "p_tau", "BIAS",
+            "p_rho", "rho", "lat", "R", "p_R", "time", "idx",
+            "_row_size", "status"
         ]
 
-    with nc.Dataset(filename, mode="r") as results:
+    with netCDF4.Dataset(filename, mode="r") as results:
         vars = results.variables.keys()
         assert sorted(vars) == sorted(vars_should)
         assert np.all(results['status'][:] != -1)
@@ -535,7 +526,7 @@ def test_validation_with_averager(ascat_reader, ismn_reader):
 
 
 def test_validation_error_n2_k2():
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
 
     dm = DataManager(
         datasets,
@@ -683,7 +674,7 @@ def test_validation_n3_k2_data_manager_argument():
         },
     }
 
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(
         datasets,
         "DS1",
@@ -707,7 +698,7 @@ def test_validation_n3_k2_data_manager_argument():
         results = process.calc(*job)
         assert sorted(list(results)) == sorted(list(tst_results))
 
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(
         datasets,
         "DS1",
@@ -806,7 +797,7 @@ def test_validation_n3_k2():
         },
     }
 
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(
         datasets,
         "DS1",
@@ -914,7 +905,7 @@ def test_validation_n3_k2_temporal_matching_no_matches2():
 
 
 def test_validation_n3_k2_masking_no_data_remains():
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
 
     # setup masking datasets
 
@@ -1023,9 +1014,9 @@ def test_validation_n3_k2_masking():
     }
 
     # cell 4 in this example has two gpis so it returns different results.
-    tst_results = {1: tst_results_one, 1: tst_results_one, 2: tst_results_two}
+    tst_results = {1: tst_results_one, 2: tst_results_two}
 
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
 
     # setup masking datasets
 
@@ -1197,8 +1188,8 @@ def test_ascat_ismn_validation_metadata_rolling(ascat_reader, ismn_reader):
             )
     }
     vars_should = [
-        u"gpi", u"RMSD", u"lon", u"lat", u"R", u"p_R", u"time", u"idx",
-        u"_row_size", u"status"
+        "gpi", "RMSD", "lon", "lat", "R", "p_R", "time", "idx",
+        "_row_size", "status"
     ]
     for key, value in metadata_dict_template.items():
         vars_should.append(key)

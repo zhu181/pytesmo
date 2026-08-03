@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 GPU acceleration tests: CPU vs GPU numerical equivalence.
 
@@ -9,10 +8,37 @@ implementations. They are skipped when no GPU is available.
 
 import numpy as np
 import numpy.testing as nptest
-import pytest
-
 import pytesmo.metrics
+import pytest
 from pytesmo.gpu import is_gpu_available
+from pytesmo.gpu.bootstrap import (
+    tcol_metrics_with_bootstrapped_ci as gpu_tcol_metrics_with_bootstrapped_ci,
+)
+from pytesmo.gpu.bootstrap import (
+    with_bootstrapped_ci as gpu_with_bootstrapped_ci,
+)
+from pytesmo.gpu.pairwise import (
+    bias as gpu_bias,
+)
+from pytesmo.gpu.pairwise import (
+    kendall_tau as gpu_kendall_tau,
+)
+from pytesmo.gpu.pairwise import (
+    mse_decomposition as gpu_mse_decomposition,
+)
+from pytesmo.gpu.pairwise import (
+    pearson_r as gpu_pearson_r,
+)
+from pytesmo.gpu.pairwise import (
+    rmsd as gpu_rmsd,
+)
+from pytesmo.gpu.pairwise import (
+    spearman_r as gpu_spearman_r,
+)
+from pytesmo.gpu.pairwise import (
+    ubrmsd as gpu_ubrmsd,
+)
+from pytesmo.gpu.tcol import tcol_metrics as gpu_tcol_metrics
 
 
 def _numpy(arr):
@@ -20,20 +46,6 @@ def _numpy(arr):
     if hasattr(arr, 'get'):
         arr = arr.get()
     return np.asarray(arr).squeeze()
-from pytesmo.gpu.pairwise import (
-    bias as gpu_bias,
-    mse_decomposition as gpu_mse_decomposition,
-    rmsd as gpu_rmsd,
-    ubrmsd as gpu_ubrmsd,
-    pearson_r as gpu_pearson_r,
-    spearman_r as gpu_spearman_r,
-    kendall_tau as gpu_kendall_tau,
-)
-from pytesmo.gpu.tcol import tcol_metrics as gpu_tcol_metrics
-from pytesmo.gpu.bootstrap import (
-    with_bootstrapped_ci as gpu_with_bootstrapped_ci,
-    tcol_metrics_with_bootstrapped_ci as gpu_tcol_metrics_with_bootstrapped_ci,
-)
 
 requires_gpu = pytest.mark.skipif(
     not is_gpu_available(), reason="GPU (CuPy) not available"
@@ -45,7 +57,7 @@ def correlated_data():
     """Correlated random data with r ~ 0.8."""
     np.random.seed(42)
     cov = np.array([[1, 0.8], [0.8, 1]])
-    X = np.linalg.cholesky(cov) @ np.random.randn(2, 500)
+    X = np.linalg.cholesky(cov) @ np.random.randn(2, 500)  # noqa: N806
     x, y = X[0, :], X[1, :]
     y = 1.1 * y + 0.5
     return x, y

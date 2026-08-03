@@ -33,12 +33,11 @@ Test datasets used in several tests
 import numpy as np
 import numpy.testing as nptest
 import pandas as pd
-
 import pygeogrids.grids as grids
 from pygeobase.io_base import GriddedTsBase
 
 
-class TestDataset(object):
+class TestDataset:
     """Test dataset that acts as a fake object for the base classes."""
     __test__ = False # prevent pytest from collecting this class during testing
 
@@ -87,7 +86,7 @@ class MaskingTestDataset(TestDataset):
 
     def read(self, *args, **kwargs):
         limit = kwargs.pop("limit")
-        data = super(MaskingTestDataset, self).read(*args)
+        data = super().read(*args)
         data = data[['x']]
         data = data < limit
         data = data[:limit]
@@ -105,7 +104,7 @@ def test_masking_testdataset():
     nptest.assert_almost_equal(data['x'].values, data_should)
 
 
-def setup_TestDatasets() -> dict:
+def setup_test_datasets() -> dict:
     grid = grids.CellGrid(np.array([1, 2, 3, 4]), np.array([1, 2, 3, 4]),
                           np.array([4, 4, 2, 1]), gpis=np.array([1, 2, 3, 4]))
 

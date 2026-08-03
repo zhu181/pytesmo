@@ -30,23 +30,18 @@
 Test for the data manager
 '''
 
+import numpy as np
 import pandas as pd
 import pandas.testing as pdtest
-import pytest
-import numpy as np
-
 import pygeogrids.grids as grids
+import pytest
 from pygeobase.io_base import GriddedTsBase
+from pytesmo.validation_framework.data_manager import DataManager, get_result_combinations, get_result_names
 
-from pytesmo.validation_framework.data_manager import DataManager
-from pytesmo.validation_framework.data_manager import get_result_names
-from pytesmo.validation_framework.data_manager import get_result_combinations
-
-from tests.test_validation_framework.test_datasets import TestDataset
-from tests.test_validation_framework.test_datasets import setup_TestDatasets
+from tests.test_validation_framework.test_datasets import TestDataset, setup_test_datasets
 
 
-class TestDatasetRuntimeError(object):
+class TestDatasetRuntimeError:
     """Test dataset that acts as a fake object for the base classes."""
     __test__ = False # prevent pytest from collecting this class during testing
 
@@ -75,7 +70,7 @@ class TestDatasetRuntimeError(object):
         pass
 
 
-def setup_TestDataManager():
+def setup_test_data_manager():
 
     grid = grids.CellGrid(np.array([1, 2, 3, 4]), np.array([1, 2, 3, 4]),
                           np.array([4, 4, 2, 1]), gpis=np.array([1, 2, 3, 4]))
@@ -112,7 +107,7 @@ def setup_TestDataManager():
     return dm
 
 
-def test_DataManager_default_add():
+def test_data_manager_default_add():
 
     grid = grids.CellGrid(np.array([1, 2, 3, 4]), np.array([1, 2, 3, 4]),
                           np.array([4, 4, 2, 1]), gpis=np.array([1, 2, 3, 4]))
@@ -152,7 +147,7 @@ def test_DataManager_default_add():
         }}
 
 
-def test_DataManager_read_ts_method_names():
+def test_data_manager_read_ts_method_names():
 
     ds1 = TestDataset("")
 
@@ -177,14 +172,14 @@ def test_DataManager_read_ts_method_names():
     pdtest.assert_frame_equal(data_other, ds1.read_ts_other(1))
 
 
-def test_DataManager_RuntimeError():
+def test_data_manager_runtime_error():
     """
     Test DataManager with some fake Datasets that throw RuntimeError
     instead of IOError if a file does not exist like netCDF4
 
     """
 
-    dm = setup_TestDataManager()
+    dm = setup_test_data_manager()
     with pytest.warns(UserWarning):
         dm.read_reference(1)
     with pytest.warns(UserWarning):
@@ -193,9 +188,9 @@ def test_DataManager_RuntimeError():
         dm.read_other('DS3', 1)
 
 
-def test_DataManager_dataset_names():
+def test_data_manager_dataset_names():
 
-    dm = setup_TestDataManager()
+    dm = setup_test_data_manager()
     result_names = dm.get_results_names(3)
     assert result_names == [
         (('DS1', 'soil moisture'), ('DS2', 'sm'), ('DS3', 'sm')),
@@ -208,9 +203,9 @@ def test_DataManager_dataset_names():
                             (('DS1', 'soil moisture'), ('DS3', 'sm2'))]
 
 
-def test_DataManager_get_data():
+def test_data_manager_get_data():
 
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(datasets, 'DS1',
                      read_ts_names={f'DS{i}': 'read' for i in range(1, 4)})
     data = dm.get_data(1, 1, 1)
@@ -261,7 +256,7 @@ def test_get_result_combinations():
 def test_maxdist():
 
     testdf = pd.DataFrame([1, 1, 1], columns=["sm"])
-    class TestDataset(object):
+    class TestDataset:
         """Test dataset that acts as a fake object for the base classes."""
 
         def __init__(self, filename, mode='r'):

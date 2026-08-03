@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 """
 Test functions from the df_metrics module that applies metrics to combinations
@@ -8,9 +7,10 @@ of columns from a data frame.
 import numpy as np
 import pandas as pd
 import pytesmo.df_metrics as df_metrics
-from pytesmo.metrics import bias, pearsonr
 import pytest
+from pytesmo.metrics import bias
 from scipy import stats
+
 
 def test_n_combinations():
     coll = [1,2,3,4]
@@ -30,7 +30,7 @@ def test_apply():
     with pytest.deprecated_call():
         bias_matrix_old = df_metrics.pairwise_apply(df, bias)
     bias_matrix_new = df_metrics.nwise_apply(df, bias,  n=2, as_df=True)
-    r_matrix_new = df_metrics.nwise_apply(df, stats.pearsonr,  n=2, as_df=True)
+    r_matrix_new = df_metrics.nwise_apply(df, stats.pearsonr, n=2, as_df=True)  # noqa: F841
     assert bias_matrix_old.equals(bias_matrix_new)
 
     # check if dict implementation and matrix implementation have same result

@@ -34,8 +34,6 @@ Created on Tue Nov  3 14:56:50 2015
 '''
 
 from pytesmo.utils import ensure_iterable
-import numpy as np
-import numpy.testing as nptest
 
 
 def test_ensure_iterable():

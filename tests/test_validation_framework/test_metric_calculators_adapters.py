@@ -1,13 +1,12 @@
 import unittest
-
-import pandas as pd
-import numpy as np
-
-from pytesmo.time_series.grouping import YearlessDatetime, TsDistributor
 from datetime import datetime
 
+import numpy as np
+import pandas as pd
+from pytesmo.time_series.grouping import TsDistributor, YearlessDatetime
 
-class Test_YearlessDateTime(unittest.TestCase):
+
+class TestYearlessDateTime(unittest.TestCase):
 
     def setUp(self) -> None:
         self.past = datetime(1900, 1, 2, 3, 4, 5)
@@ -32,7 +31,7 @@ class Test_YearlessDateTime(unittest.TestCase):
             self.future).to_datetime(years=[2104, 2111])[0] == self.future
 
 
-class Test_TimeSeriesDistributionSet(unittest.TestCase):
+class TestTimeSeriesDistributionSet(unittest.TestCase):
 
     def setUp(self) -> None:
         df = pd.DataFrame(

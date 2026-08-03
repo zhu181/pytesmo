@@ -6,9 +6,10 @@ build correctly on readthedocs.
 
 import os
 import subprocess
-from nbconvert.preprocessors import ExecutePreprocessor
+
 import nbformat
 import pytest
+from nbconvert.preprocessors import ExecutePreprocessor
 from pytesmo.utils import rootdir
 
 examples_path = os.path.join(rootdir(), 'docs', 'examples')

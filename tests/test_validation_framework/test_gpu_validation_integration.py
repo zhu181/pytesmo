@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Integration tests for the full validation workflow with GPU/parallel support.
 
@@ -7,20 +6,18 @@ metric calculators) with GPU enabled and verifies results match the CPU
 baseline.
 """
 
-import numpy as np
 import numpy.testing as nptest
 import pytest
-
 from pytesmo.validation_framework.data_manager import DataManager
-from pytesmo.validation_framework.validation import Validation
 from pytesmo.validation_framework.metric_calculators import (
     PairwiseIntercomparisonMetrics,
 )
 from pytesmo.validation_framework.temporal_matchers import (
     BasicTemporalMatching,
 )
+from pytesmo.validation_framework.validation import Validation
 
-from tests.test_validation_framework.test_datasets import setup_TestDatasets
+from tests.test_validation_framework.test_datasets import setup_test_datasets
 
 gpu_available = True
 try:
@@ -36,7 +33,7 @@ except ImportError:
 
 
 def _run_validation(use_gpu=False, **kwargs):
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(
         datasets,
         "DS1",
@@ -102,7 +99,7 @@ class TestGPUValidationWorkflow:
 
 
 def _run_validation_bootstrap(use_gpu=False):
-    datasets = setup_TestDatasets()
+    datasets = setup_test_datasets()
     dm = DataManager(
         datasets,
         "DS1",

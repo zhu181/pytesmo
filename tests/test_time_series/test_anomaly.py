@@ -29,12 +29,10 @@
 '''
 Test for climatology and anomaly calculation.
 '''
-import pdb
 
+import numpy as np
 import pandas as pd
 import pandas.testing as pdt
-import numpy as np
-
 import pytesmo.time_series.anomaly as anomaly
 from pytesmo.time_series.anomaly import moving_average
 

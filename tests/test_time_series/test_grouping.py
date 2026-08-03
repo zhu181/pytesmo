@@ -35,6 +35,7 @@ Tests for grouping functions
 """
 
 from datetime import date, datetime
+
 from pytesmo.time_series.grouping import grouped_dates_between
 
 

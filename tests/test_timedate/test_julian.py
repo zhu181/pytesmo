@@ -30,14 +30,11 @@
 Tests for julian date conversion.
 '''
 
+from datetime import datetime
+
 import numpy as np
 import numpy.testing as nptest
-from datetime import datetime
-from pytesmo.timedate.julian import julday
-from pytesmo.timedate.julian import caldat
-from pytesmo.timedate.julian import julian2date
-from pytesmo.timedate.julian import julian2datetime
-from pytesmo.timedate.julian import doy
+from pytesmo.timedate.julian import caldat, doy, julday, julian2date, julian2datetime
 
 
 def test_julday():
@@ -87,7 +84,7 @@ def test_caldat_array():
 def test_julian2date():
     (year, month, day,
      hour, minute, second, micro) = julian2date(2457533.9306828701)
-    assert type(year) == int
+    assert isinstance(year, int)
     assert year == 2016
     assert month == 5
     assert day == 25
@@ -109,7 +106,7 @@ def test_julian2date():
 def test_julian2date_single_array():
     (year, month, day,
      hour, minute, second, micro) = julian2date(np.array([2457533.9306828701]))
-    assert type(year) == np.ndarray
+    assert isinstance(year, np.ndarray)
     assert year == 2016
     assert month == 5
     assert day == 25
@@ -144,7 +141,7 @@ def test_julian2datetime():
 def test_julian2datetime_single_array():
     dt = julian2datetime(np.array([2457533.9306828701]))
     dt_should = np.array([datetime(2016, 5, 25, 10, 20, 10, 999976)])
-    assert type(dt) == np.ndarray
+    assert isinstance(dt, np.ndarray)
     assert np.all(dt == dt_should)
 
 
@@ -153,7 +150,7 @@ def test_julian2datetime_array():
                                    2457533.9306828701]))
     dts = datetime(2016, 5, 25, 10, 20, 10, 999976)
     dt_should = np.array([dts, dts])
-    assert type(dt) == np.ndarray
+    assert isinstance(dt, np.ndarray)
     assert np.all(dt == dt_should)
 
 

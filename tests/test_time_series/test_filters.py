@@ -29,8 +29,8 @@
 '''
 Tests for the time series filters
 '''
-import pytesmo.time_series.filters as filters
 import numpy as np
+import pytesmo.time_series.filters as filters
 
 
 def test_exp_filter():

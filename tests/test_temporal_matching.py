@@ -32,8 +32,8 @@ Created on Wed Jul  8 19:37:14 2015
 """
 
 
-from copy import deepcopy
 from datetime import datetime
+
 import numpy as np
 import numpy.testing as nptest
 import pandas as pd
