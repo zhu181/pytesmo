@@ -40,6 +40,7 @@ def _make_batch_processor(func: Callable):
         # reference cycles delay GC of large intermediate objects — both
         # appear as "unmanaged memory" to the Dask worker monitor.
         import gc
+        import time
 
         try:
             from pytesmo.gpu.backend import free_memory as _gpu_free
@@ -47,7 +48,13 @@ def _make_batch_processor(func: Callable):
             _gpu_free()
         except Exception:
             pass
-        gc.collect()
+        # Multiple GC passes with short pauses between them:
+        # pass 1 breaks reference cycles, pass 2 collects newly-unreachable
+        # objects revealed by pass 1, pass 3 is a confirmation no-op.
+        # The sleep gives the OS a chance to reclaim freed pages.
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.01)
         return results
 
     return _process_batch
