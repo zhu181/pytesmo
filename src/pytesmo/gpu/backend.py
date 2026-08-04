@@ -60,9 +60,11 @@ class GPUContext:
                     UserWarning
                 )
             
-            # Configure memory pool
-            cp.cuda.set_allocator(cp.cuda.MemoryPool().malloc)
-            self._memory_pool = cp.get_default_memory_pool()
+            # Configure memory pool — store the actual pool instance so
+            # free_memory() frees the allocator that is actively used, not
+            # the default pool which is a separate object.
+            self._memory_pool = cp.cuda.MemoryPool()
+            cp.cuda.set_allocator(self._memory_pool.malloc)
             
             # Create non-blocking stream for async operations
             self._stream = cp.cuda.Stream(non_blocking=True)

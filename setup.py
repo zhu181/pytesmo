@@ -97,7 +97,7 @@ if __name__ == "__main__":
             use_scm_version={"version_scheme": "no-guess-dev"},
             extras_require={
                 'gpu': [
-                    'cupy-cuda12x>=13.0',
+                    'cupy-cuda13x>=13.0',
                     'dask[distributed]>=2024.0',
                     'zarr>=2.16',
                     'fastparquet>=2024.0',

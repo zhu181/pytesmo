@@ -33,6 +33,21 @@ def _make_batch_processor(func: Callable):
             except Exception as e:
                 logger.error(f"Job {job} failed: {e}")
                 results.append({"error": str(e), "job": job})
+        # Release GPU memory pool blocks back to CUDA and break any Python
+        # reference cycles accumulated from the complex Validation / reader /
+        # adapter object graph deserialized per-batch.  Without this, the
+        # CuPy pool grows to the high-water mark and never shrinks, and
+        # reference cycles delay GC of large intermediate objects — both
+        # appear as "unmanaged memory" to the Dask worker monitor.
+        import gc
+
+        try:
+            from pytesmo.gpu.backend import free_memory as _gpu_free
+
+            _gpu_free()
+        except Exception:
+            pass
+        gc.collect()
         return results
 
     return _process_batch
